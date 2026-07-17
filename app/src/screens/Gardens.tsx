@@ -50,8 +50,7 @@ export function Gardens({ onSelectGarden }: GardensProps) {
   const [length, setLength] = useState("");
   const [error, setError] = useState("");
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = () => {
     const w = parseFloat(width);
     const l = parseFloat(length);
     if (!name.trim()) return setError("Введите название участка");
@@ -83,125 +82,122 @@ export function Gardens({ onSelectGarden }: GardensProps) {
     setDeleteTarget(null);
   };
 
-  const hasGarden = gardens.length > 0;
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10 border-b bg-white px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900">Мои участки</h1>
+    <div className="min-h-screen bg-paper">
+      <header className="sticky top-0 z-10 border-b-2 border-ink bg-paper px-4 py-4">
+        <h1
+          className="font-poster text-[30px] uppercase tracking-[0.03em] text-ink"
+          style={{ fontWeight: 700 }}
+        >
+          Мои участки
+        </h1>
       </header>
 
       <main className="mx-auto max-w-2xl p-4">
         {gardens.length === 0 ? (
           <div className="mt-20 text-center">
-            <div className="mb-4 text-5xl">🌱</div>
-            <p className="mb-2 text-gray-600">У вас пока нет участков</p>
-            <p className="mb-6 text-sm text-gray-400">
-              Создайте первый участок, чтобы начать
+            <div className="mb-4 text-6xl">🌱</div>
+            <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
+              Ни одной грядки без записи!
             </p>
-            <Button onClick={() => setShowCreate(true)} className="mx-auto max-w-xs">
-              + Создать участок
+            <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
+              Добавьте первый — дом или грядку
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => setShowCreate(true)}
+              className="mx-auto max-w-xs"
+            >
+              + Добавить участок
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {gardens.map((g) => (
               <div
                 key={g._id}
-                className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm"
+                className="rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank"
               >
-                <button
-                  onClick={() => onSelectGarden(g._id, g.name)}
-                  className="flex-1 text-left"
-                >
-                  <div className="font-medium text-gray-900">{g.name}</div>
-                  {g.boundary && (
-                    <div className="text-sm text-gray-500">
-                      {g.boundary.points[1]?.[0]} × {g.boundary.points[2]?.[1]} м
+                <div className="flex items-center justify-between rounded-[6px] border border-ink p-4">
+                  <button
+                    onClick={() => onSelectGarden(g._id, g.name)}
+                    className="flex-1 text-left"
+                  >
+                    <div className="font-poster text-[17px] text-ink">
+                      {g.name}
                     </div>
-                  )}
-                </button>
-                <button
-                  onClick={() => setDeleteTarget(g._id)}
-                  className="ml-3 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                  aria-label="Удалить участок"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" />
-                  </svg>
-                </button>
+                    {g.boundary && (
+                      <div className="font-mono text-[15px] text-blueink">
+                        {g.boundary.points[1]?.[0]} × {g.boundary.points[2]?.[1]} м
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(g._id)}
+                    className="ml-3 rounded-lg p-2 text-red transition-colors hover:bg-red/10"
+                    aria-label="Удалить участок"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
-
-        {hasGarden && !showCreate && (
-          <p className="mt-6 text-center text-xs text-gray-400">
-            В MVP доступен один участок
-          </p>
-        )}
       </main>
 
       {/* Модалка создания */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
-              Новый участок
-            </h2>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <Input
-                label="Название"
-                placeholder="Дача в Малинниках"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <div className="flex gap-3">
-                <Input
-                  label="Ширина, м"
-                  type="number"
-                  placeholder="20"
-                  value={width}
-                  onChange={(e) => setWidth(e.target.value)}
-                />
-                <Input
-                  label="Длина, м"
-                  type="number"
-                  placeholder="30"
-                  value={length}
-                  onChange={(e) => setLength(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setShowCreate(false);
-                    setError("");
-                  }}
-                >
-                  Отмена
-                </Button>
-                <Button type="submit">Создать</Button>
-              </div>
-            </form>
+      <Modal
+        open={showCreate}
+        title="Новый участок"
+        confirmText="Создать"
+        cancelText="Отмена"
+        onConfirm={handleCreate}
+        onCancel={() => {
+          setShowCreate(false);
+          setError("");
+        }}
+      >
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Название"
+            placeholder="Дача в Малинниках"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <div className="flex gap-3">
+            <Input
+              label="Ширина, м"
+              type="number"
+              placeholder="20"
+              value={width}
+              onChange={(e) => setWidth(e.target.value)}
+            />
+            <Input
+              label="Длина, м"
+              type="number"
+              placeholder="30"
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
+            />
           </div>
+          {error && <p className="text-[15px] font-mono text-red">{error}</p>}
         </div>
-      )}
+      </Modal>
 
       {/* Модалка удаления */}
       <Modal
         open={deleteTarget !== null}
-        title="Удалить участок?"
+        title="Списать участок?"
         confirmVariant="danger"
-        confirmText="Удалить"
+        confirmText="Списать"
+        cancelText="Отмена"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       >
-        Участок и все связанные данные (схема, посадки, журнал, фото) будут
-        удалены без возможности восстановления.
+        Записи в журнале сохранятся.
       </Modal>
     </div>
   );

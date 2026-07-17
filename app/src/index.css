@@ -1,12 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Шрифты v5.1 «Садовая книжка» */
 @import url('@fontsource/oswald/400.css');
 @import url('@fontsource/oswald/600.css');
 @import url('@fontsource/oswald/700.css');
 @import url('@fontsource/pt-mono/index.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Sheet-анимация (DESIGN.md v5.1 §6) */
 @keyframes sheet-up {

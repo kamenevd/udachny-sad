@@ -4,8 +4,9 @@
  * Номера объектов генплана: кружки ⌀20 paper с рамкой ink 1.5px,
  * номер PT Mono 11/700.
  *
- * Группировка: объекты с одинаковыми (type + label) получают один общий
- * номер. Объекты без label — каждый со своим номером.
+ * Группировка НЕ выполняется здесь — номера берутся из groupMap,
+ * вычисленного хуком useExplicationData (единственный источник истины).
+ * Хук использует exported-функцию groupKey для детерминированного ключа.
  *
  * Позиция номера: центроид всех точек группы.
  *   - point-объекты (tree, shrub, gate) → одна координата на объект;
@@ -19,6 +20,7 @@
 
 import { Group, Circle, Text } from 'react-konva';
 import { canvasColors } from '../../theme/canvasColors';
+import { groupKey } from './useExplicationData';
 
 // ─── Типы ───────────────────────────────────────────────────────────
 
@@ -33,6 +35,8 @@ export interface SchemaObjectForNumber {
 
 export interface ObjectNumbersProps {
   objects: SchemaObjectForNumber[];
+  /** Карта groupKey(obj) → номер (из useExplicationData). Единственный источник номеров. */
+  groupMap: Map<string, number>;
   /** Номер выбранной группы (из экспликации) — подсвечивается кольцом */
   selectedNumber?: number | null;
 }
@@ -57,7 +61,6 @@ const POINT_TYPES = new Set(['tree', 'shrub', 'gate']);
 
 interface NumberGroup {
   number: number;
-  objects: SchemaObjectForNumber[];
   centroid: { x: number; y: number };
 }
 
@@ -81,63 +84,43 @@ function getObjectCoords(obj: SchemaObjectForNumber): Array<[number, number]> {
 }
 
 /**
- * Центроид группы — простое среднее всех координат всех объектов.
+ * Группирует объекты по номерам из groupMap и вычисляет центроид каждой группы.
+ *
+ * Номера берутся из useExplicationData.groupMap — этот компонент НЕ выполняет
+ * собственную группировку. Только сбор точек и усреднение.
  */
-function computeCentroid(
-  objects: SchemaObjectForNumber[]
-): { x: number; y: number } | null {
-  let sumX = 0;
-  let sumY = 0;
-  let count = 0;
+function computeGroups(
+  objects: SchemaObjectForNumber[],
+  groupMap: Map<string, number>
+): NumberGroup[] {
+  // Собираем точки по номерам
+  const groupsByNumber = new Map<number, { sumX: number; sumY: number; count: number }>();
 
   for (const obj of objects) {
+    const key = groupKey(obj);
+    const number = groupMap.get(key);
+    if (number === undefined) continue;
+
+    let entry = groupsByNumber.get(number);
+    if (!entry) {
+      entry = { sumX: 0, sumY: 0, count: 0 };
+      groupsByNumber.set(number, entry);
+    }
+
     for (const [x, y] of getObjectCoords(obj)) {
-      sumX += x;
-      sumY += y;
-      count++;
+      entry.sumX += x;
+      entry.sumY += y;
+      entry.count++;
     }
-  }
-
-  if (count === 0) return null;
-  return { x: sumX / count, y: sumY / count };
-}
-
-/**
- * Группирует объекты по ключу (type + label).
- *
- * Объекты без label попадают в индивидуальные группы (ключ по id),
- * чтобы каждый получил собственный номер.
- *
- * Порядок групп = порядок первого появления в массиве objects.
- */
-function groupObjects(objects: SchemaObjectForNumber[]): NumberGroup[] {
-  const groupMap = new Map<string, SchemaObjectForNumber[]>();
-  const keyOrder: string[] = [];
-
-  for (const obj of objects) {
-    const key =
-      obj.label != null
-        ? `${obj.type}::${obj.label}`
-        : `__single__${obj.id}`;
-
-    let arr = groupMap.get(key);
-    if (!arr) {
-      arr = [];
-      groupMap.set(key, arr);
-      keyOrder.push(key);
-    }
-    arr.push(obj);
   }
 
   const groups: NumberGroup[] = [];
-  let number = 1;
-
-  for (const key of keyOrder) {
-    const objs = groupMap.get(key)!;
-    const centroid = computeCentroid(objs);
-    if (centroid) {
-      groups.push({ number, objects: objs, centroid });
-      number++;
+  for (const [number, entry] of groupsByNumber) {
+    if (entry.count > 0) {
+      groups.push({
+        number,
+        centroid: { x: entry.sumX / entry.count, y: entry.sumY / entry.count },
+      });
     }
   }
 
@@ -148,9 +131,10 @@ function groupObjects(objects: SchemaObjectForNumber[]): NumberGroup[] {
 
 export function ObjectNumbers({
   objects,
+  groupMap,
   selectedNumber = null,
 }: ObjectNumbersProps) {
-  const groups = groupObjects(objects);
+  const groups = computeGroups(objects, groupMap);
 
   return (
     <Group listening={false}>

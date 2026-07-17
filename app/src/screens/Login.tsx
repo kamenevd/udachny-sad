@@ -25,13 +25,13 @@ export function Login({ onLogin }: LoginProps) {
 
   if (sent) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-paper">
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-6 bg-paper">
         <div className="w-full max-w-sm text-center">
           <div className="mb-4 text-5xl">📧</div>
-          <h1 className="mb-2 text-3xl font-poster font-bold uppercase tracking-[0.04em] text-ink">
+          <h1 className="mb-3 text-[30px] leading-[1.1] font-poster font-semibold uppercase tracking-[0.03em] text-ink">
             ПРОВЕРЬТЕ ПОЧТУ
           </h1>
-          <p className="text-lg text-ink-muted font-mono">
+          <p className="text-[17px] leading-[1.55] text-ink-muted">
             Мы отправили ссылку для входа на {email}
           </p>
         </div>
@@ -40,19 +40,19 @@ export function Login({ onLogin }: LoginProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-paper">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-6 bg-paper">
+      <div className="w-full max-w-sm flex flex-col gap-4">
+        <div className="text-center">
           <div className="mb-3 text-6xl">🌾</div>
-          <h1 className="text-4xl font-poster font-bold uppercase tracking-[0.04em] text-ink">
+          <h1 className="text-[30px] leading-[1.1] font-poster font-semibold uppercase tracking-[0.03em] text-ink">
             уДачный сад
           </h1>
-          <p className="mt-3 text-base text-ink-muted">
+          <p className="mt-3 text-[17px] leading-[1.55] text-ink-muted">
             Войдите, чтобы начать вести учёт растений
           </p>
         </div>
 
-        <form onSubmit={handleEmailLogin} className="mb-4 space-y-4">
+        <form onSubmit={handleEmailLogin} className="flex flex-col gap-4">
           <Input
             label="Email"
             type="email"
@@ -64,7 +64,7 @@ export function Login({ onLogin }: LoginProps) {
           <Button type="submit" className="w-full">Войти по email</Button>
         </form>
 
-        <div className="relative my-6">
+        <div className="relative py-2">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-ink" />
           </div>
