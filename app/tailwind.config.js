@@ -25,6 +25,15 @@ export default {
         poster: ['Oswald', 'system-ui', 'sans-serif'],
         mono: ['"PT Mono"', 'monospace'],
       },
+      keyframes: {
+        'sheet-up': {
+          from: { transform: 'translateY(100%)' },
+          to: { transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'sheet-up': 'sheet-up 0.22s ease-out',
+      },
     },
   },
   plugins: [],

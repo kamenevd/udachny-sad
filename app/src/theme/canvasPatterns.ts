@@ -3,7 +3,7 @@
  * Сопоставлены с DESIGN.md v5.1 §3.2
  */
 
-import { Konva } from 'konva/lib/Global';
+import type Konva from 'konva';
 import { canvasColors } from './canvasColors';
 
 /**

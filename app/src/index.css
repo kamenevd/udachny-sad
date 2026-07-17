@@ -7,3 +7,9 @@
 @import url('@fontsource/oswald/600.css');
 @import url('@fontsource/oswald/700.css');
 @import url('@fontsource/pt-mono/index.css');
+
+/* Sheet-анимация (DESIGN.md v5.1 §6) */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}

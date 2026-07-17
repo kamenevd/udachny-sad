@@ -2,7 +2,7 @@
  * Кнопки с двойной рамкой (DESIGN.md v5.1 §6)
  */
 
-import { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'plain' | 'disabled';
 
