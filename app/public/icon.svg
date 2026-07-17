@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Фон - пожелтевшая бумага -->
+  <rect width="512" height="512" fill="#F7EFD9"/>
+
+  <!-- Тетрадь в клетку -->
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M20 0H0V20" fill="none" stroke="#D5DEE8" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" fill="url(#grid)"/>
+
+  <!-- Красная звезда -->
+  <path d="M256 80 L280 180 L380 180 L300 240 L330 340 L256 280 L180 340 L210 240 L130 180 L230 180 Z"
+        fill="#BF2E24" stroke="#202A38" stroke-width="3"/>
+
+  <!-- Колос пшеницы -->
+  <g transform="translate(180, 280)">
+    <!-- Стебель -->
+    <rect x="73" y="50" width="6" height="180" fill="#C99A2C" stroke="#202A38" stroke-width="2"/>
+
+    <!-- Зерновки колоса -->
+    <ellipse cx="76" cy="40" rx="8" ry="12" fill="#C99A2C" stroke="#202A38" stroke-width="1.5"/>
+    <ellipse cx="60" cy="55" rx="8" ry="12" fill="#C99A2C" stroke="#202A38" stroke-width="1.5" transform="rotate(-30 60 55)"/>
+    <ellipse cx="92" cy="55" rx="8" ry="12" fill="#C99A2C" stroke="#202A38" stroke-width="1.5" transform="rotate(30 92 55)"/>
+    <ellipse cx="52" cy="75" rx="8" ry="12" fill="#C99A2C" stroke="#202A38" stroke-width="1.5" transform="rotate(-45 52 75)"/>
+    <ellipse cx="100" cy="75" rx="8" ry="12" fill="#C99A2C" stroke="#202A38" stroke-width="1.5" transform="rotate(45 100 75)"/>
+    <ellipse cx="48" cy="100" rx="7" ry="11" fill="#C99A2C" stroke="#202A38" stroke-width="1.5" transform="rotate(-60 48 100)"/>
+    <ellipse cx="104" cy="100" rx="7" ry="11" fill="#C99A2C" stroke="#202A38" stroke-width="1.5" transform="rotate(60 104 100)"/>
+
+    <!-- Листья -->
+    <path d="M76 140 Q40 160 30 200 Q60 180 76 150" fill="#6FAE52" stroke="#202A38" stroke-width="1.5"/>
+    <path d="M76 160 Q110 180 120 220 Q90 200 76 170" fill="#6FAE52" stroke="#202A38" stroke-width="1.5"/>
+  </g>
+
+  <!-- Название «уДачный сад» машинописью -->
+  <text x="256" y="450" text-anchor="middle" font-family="monospace" font-size="16" font-weight="700" fill="#2B4C7E">
+    уДачный сад
+  </text>
+
+  <!-- Круглая печать по углам -->
+  <circle cx="40" cy="40" r="25" fill="none" stroke="#BF2E24" stroke-width="2" opacity="0.3"/>
+  <circle cx="472" cy="472" r="25" fill="none" stroke="#BF2E24" stroke-width="2" opacity="0.3"/>
+</svg>
