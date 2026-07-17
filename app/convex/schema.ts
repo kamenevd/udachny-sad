@@ -39,6 +39,7 @@ export default defineSchema({
 
   schemaObjects: defineTable({
     gardenId: v.id("gardens"),
+    // building | greenhouse | lawn | path | bed | flowerbed | tree | shrub | water | gate | other
     type: v.string(),
     label: v.optional(v.string()),
     geometry: v.object({

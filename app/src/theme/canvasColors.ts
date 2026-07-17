@@ -38,6 +38,8 @@ export const canvasColors = {
   greenhouseFill: '#E2EEE9',
   greenhousePattern: '#6E8F86',
 
+  gateFill: '#C9C2AC',
+
   waterFill: '#A9CFE2',
   waterPattern: '#3E6E8E',
 

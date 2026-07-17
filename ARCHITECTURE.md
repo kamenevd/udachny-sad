@@ -176,11 +176,14 @@ schemaObjects: defineTable({
 
 | Значение | Геометрия | Описание |
 |---|---|---|
-| `"building"` | polygon | Постройка (дом, баня, сарай, теплица) |
+| `"building"` | polygon | Постройка (дом, баня, сарай) |
+| `"greenhouse"` | polygon | Теплица |
+| `"lawn"` | polygon | Газон |
 | `"path"` | line / polygon | Дорожка |
 | `"bed"` | polygon | Грядка |
 | `"flowerbed"` | polygon | Клумба |
 | `"tree"` | point | Дерево (схематичное) |
+| `"shrub"` | point | Кустарник (аналогично tree) |
 | `"water"` | polygon | Водоём, колодец |
 | `"gate"` | point | Калитка, ворота |
 | `"other"` | любая | Прочее |
