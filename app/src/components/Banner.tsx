@@ -10,6 +10,7 @@
  */
 
 import type { CSSProperties } from 'react';
+import { canvasColors } from '../theme/canvasColors';
 
 interface BannerProps {
   /** Число дней стрика — подставляется в «N ДНЕЙ» */
@@ -38,20 +39,17 @@ const wrapperStyle: CSSProperties = {
   display: 'inline-block',
   transform: 'rotate(3deg)',
   transformOrigin: 'center center',
-  // Появление — только при motion-safe (см. <style> ниже)
 };
 
 const kantStyle: CSSProperties = {
-  // Внешний слой — золотой кант
-  background: '#C99A2C',
+  background: canvasColors.gold,
   padding: '2px',
   clipPath: pennantClip,
   WebkitClipPath: pennantClip,
 };
 
 const bodyStyle: CSSProperties = {
-  // Внутренний слой — красный фон, контент
-  background: '#BF2E24',
+  background: canvasColors.red,
   height: '28px',
   display: 'flex',
   alignItems: 'center',
@@ -62,7 +60,7 @@ const bodyStyle: CSSProperties = {
 };
 
 const starStyle: CSSProperties = {
-  color: '#C99A2C',
+  color: canvasColors.gold,
   fontSize: '13px',
   lineHeight: 1,
   flexShrink: 0,

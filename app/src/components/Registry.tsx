@@ -58,8 +58,8 @@ export function Registry({ sectionTitle, items, onSelect, className = '' }: Regi
                   {String(item.number).padStart(2, '0')}
                 </span>
 
-                {/* Название */}
-                <span className="font-poster text-[15px] font-medium text-ink truncate flex-1">
+                {/* Название — системный шрифт (§4: Oswald только для H1-H2/кнопок/вкладок/лозунгов) */}
+                <span className="text-[15px] font-medium text-ink truncate flex-1">
                   {item.title}
                 </span>
 
