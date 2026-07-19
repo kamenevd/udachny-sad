@@ -4,17 +4,17 @@ import { WateringBanner } from './WateringBanner';
 
 describe('WateringBanner', () => {
   it('ничего не рендерит, когда show=false', () => {
-    const { container } = render(<WateringBanner show={false} days={10} plantName="Томат" />);
+    const { container } = render(<WateringBanner show={false} days={10} plantName="Роза" />);
     expect(container.firstChild).toBeNull();
   });
 
   it('персонализирует названием растения и склоняет дни', () => {
-    render(<WateringBanner show days={8} plantName="Помидоры" />);
-    expect(screen.getByText(/Помидоры не поливали 8 дней/)).toBeInTheDocument();
+    render(<WateringBanner show days={8} plantName="Флоксы" />);
+    expect(screen.getByText(/Флоксы не поливали 8 дней/)).toBeInTheDocument();
   });
 
   it('склонение для 1 дня', () => {
-    render(<WateringBanner show days={21} plantName="Огурец" />);
+    render(<WateringBanner show days={21} plantName="Пион" />);
     expect(screen.getByText(/21 день/)).toBeInTheDocument();
   });
 

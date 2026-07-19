@@ -23,9 +23,9 @@ describe("dominantLightLabel", () => {
 
 describe("buildCompositionContext", () => {
   const history: CompositionHistoryPlanting[] = [
-    { plantName: "Томаты", plantedAt: "2025-05-01", diseases: ["мучнистая роса"] },
-    { plantName: "Огурцы", plantedAt: "2024-05-01", diseases: [] },
-    { plantName: "Перец", plantedAt: "2026-05-01", diseases: [] }, // текущий год — не «прошлый сезон»
+    { plantName: "Флоксы", plantedAt: "2025-05-01", diseases: ["мучнистая роса"] },
+    { plantName: "Хосты", plantedAt: "2024-05-01", diseases: [] },
+    { plantName: "Пионы", plantedAt: "2026-05-01", diseases: [] }, // текущий год — не «прошлый сезон»
   ];
 
   it("прошлый сезон — самый свежий год строго до текущего", () => {
@@ -33,7 +33,7 @@ describe("buildCompositionContext", () => {
     expect(ctx.lastSeason?.year).toBe(2025);
     expect(ctx.lastSeason?.label).toBe("В прошлом году");
     expect(ctx.lastSeason?.plants).toEqual([
-      { plantName: "Томаты", diseases: ["мучнистая роса"] },
+      { plantName: "Флоксы", diseases: ["мучнистая роса"] },
     ]);
   });
 

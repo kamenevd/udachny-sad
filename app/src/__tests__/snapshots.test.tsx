@@ -12,12 +12,12 @@ describe("PlantCard snapshot", () => {
     const { asFragment } = render(
       <PlantCard
         cardNumber={42}
-        type="Плодовое дерево"
-        name="Яблоня × 1"
-        variety="Антоновка"
+        type="Кустарник"
+        name="Гортензия × 1"
+        variety="Лаймлайт"
         plantedAt="12.04.2024"
         status="Растёт"
-        positionNote="Грядка 3 — у забора"
+        positionNote="Клумба 3 — у забора"
         photoUrl="https://example.com/photo.jpg"
       />,
     );

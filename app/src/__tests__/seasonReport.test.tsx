@@ -10,8 +10,7 @@ const mockStats = {
   plantingsStarted: 5,
   plantingsActive: 3,
   deaths: 1,
-  harvestCount: 4,
-  harvestByUnit: [{ unit: "кг", quantity: 12 }],
+  bloomingCount: 4,
   diseaseCount: 2,
   pestCount: 0,
   wateringCount: 20,
@@ -30,7 +29,7 @@ describe("SeasonReport", () => {
     await waitFor(() =>
       expect(screen.getAllByText("5").length).toBeGreaterThan(0),
     );
-    expect(screen.getAllByText("Собрано, кг").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("12").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Записей цветения").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("4").length).toBeGreaterThan(0);
   });
 });

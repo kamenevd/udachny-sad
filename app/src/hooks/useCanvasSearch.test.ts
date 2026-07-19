@@ -10,10 +10,10 @@ import {
 } from "./useCanvasSearch";
 
 const items: CanvasSearchItem[] = [
-  { id: "1", label: "Грядка с томатами", typeName: "Грядка", variety: "Бычье сердце", centroid: { x: 0, y: 0 } },
-  { id: "2", label: "Яблоня", typeName: "Дерево", centroid: { x: 0, y: 0 } },
-  { id: "3", label: "Теплица", typeName: "Теплица", centroid: { x: 0, y: 0 } },
-  { id: "4", label: "Грядка с огурцами", typeName: "Грядка", centroid: { x: 0, y: 0 } },
+  { id: "1", label: "Клумба с розами", typeName: "Клумба", variety: "Фламментанц", centroid: { x: 0, y: 0 } },
+  { id: "2", label: "Гортензия", typeName: "Кустарник", centroid: { x: 0, y: 0 } },
+  { id: "3", label: "Композиция", typeName: "Композиция", centroid: { x: 0, y: 0 } },
+  { id: "4", label: "Клумба с пионами", typeName: "Клумба", centroid: { x: 0, y: 0 } },
 ];
 
 describe("searchCanvasItems", () => {
@@ -23,28 +23,28 @@ describe("searchCanvasItems", () => {
   });
 
   it("находит по названию", () => {
-    const r = searchCanvasItems(items, "яблон");
+    const r = searchCanvasItems(items, "гортенз");
     expect(r).toHaveLength(1);
     expect(r[0].id).toBe("2");
   });
 
-  it("находит по типу (несколько грядок)", () => {
-    const r = searchCanvasItems(items, "грядка");
+  it("находит по типу (несколько клумб)", () => {
+    const r = searchCanvasItems(items, "клумба");
     expect(r.map((x) => x.id).sort()).toEqual(["1", "4"]);
   });
 
   it("находит по сорту", () => {
-    const r = searchCanvasItems(items, "бычье");
+    const r = searchCanvasItems(items, "фламмен");
     expect(r[0].id).toBe("1");
   });
 
   it("точное совпадение ранжируется выше вхождения", () => {
-    const r = searchCanvasItems(items, "теплица");
+    const r = searchCanvasItems(items, "композиция");
     expect(r[0].id).toBe("3");
   });
 
   it("нечувствителен к регистру", () => {
-    expect(searchCanvasItems(items, "ЯБЛОНЯ")).toHaveLength(1);
+    expect(searchCanvasItems(items, "ГОРТЕНЗИЯ")).toHaveLength(1);
   });
 });
 

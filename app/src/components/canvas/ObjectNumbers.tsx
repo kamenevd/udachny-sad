@@ -27,7 +27,7 @@ import { groupKey } from './useExplicationData';
 
 export interface SchemaObjectForNumber {
   id: string;
-  /** building | greenhouse | lawn | path | bed | flowerbed | tree | shrub | water | gate | other */
+  /** building | lawn | path | flowerbed | composition | hedge | tree | shrub | water | gate | other */
   type: string;
   /** Название объекта — для группировки одинаковых */
   label?: string;

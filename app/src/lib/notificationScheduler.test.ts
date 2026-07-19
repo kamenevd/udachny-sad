@@ -25,8 +25,8 @@ function memStore(): ReminderStore & { data: Record<string, string> } {
 
 describe('add/remove', () => {
   it('добавляет с уникальным id', () => {
-    const a = addReminder([], { title: 'Полей грядку', at: 1000 });
-    const b = addReminder(a.list, { title: 'Запиши урожай', at: 2000 });
+    const a = addReminder([], { title: 'Полей клумбу', at: 1000 });
+    const b = addReminder(a.list, { title: 'Запиши цветение', at: 2000 });
     expect(b.list).toHaveLength(2);
     expect(a.reminder.id).not.toBe(b.reminder.id);
   });

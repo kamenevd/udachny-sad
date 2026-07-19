@@ -164,7 +164,7 @@ exports[`PlantCard snapshot > полная карточка с фото 1`] = `
             <dd
               class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
             >
-              Плодовое дерево
+              Кустарник
             </dd>
           </div>
           <div
@@ -178,7 +178,7 @@ exports[`PlantCard snapshot > полная карточка с фото 1`] = `
             <dd
               class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
             >
-              Яблоня × 1
+              Гортензия × 1
             </dd>
           </div>
           <div
@@ -192,7 +192,7 @@ exports[`PlantCard snapshot > полная карточка с фото 1`] = `
             <dd
               class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
             >
-              Антоновка
+              Лаймлайт
             </dd>
           </div>
           <div
@@ -234,7 +234,7 @@ exports[`PlantCard snapshot > полная карточка с фото 1`] = `
             <dd
               class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
             >
-              Грядка 3 — у забора
+              Клумба 3 — у забора
             </dd>
           </div>
         </dl>

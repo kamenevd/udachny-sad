@@ -7,9 +7,9 @@ import { SearchOnCanvas } from "../components/canvas/SearchOnCanvas";
 import type { ExplicationItem } from "../components/Explication";
 
 const items: ExplicationItem[] = [
-  { number: 1, name: "Грядка", note: "3 шт" },
-  { number: 2, name: "Яблоня Антоновка" },
-  { number: 3, name: "Теплица" },
+  { number: 1, name: "Клумба", note: "3 шт" },
+  { number: 2, name: "Гортензия Лаймлайт" },
+  { number: 3, name: "Композиция" },
 ];
 
 function open() {
@@ -20,17 +20,17 @@ describe("SearchOnCanvas", () => {
   it("разворачивается по клику на лупу", () => {
     render(<SearchOnCanvas items={items} selectedNumber={null} onHighlight={vi.fn()} />);
     open();
-    expect(screen.getByPlaceholderText(/Грядка/)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/Клумба/)).toBeTruthy();
   });
 
   it("фильтрует по названию объекта", () => {
     render(<SearchOnCanvas items={items} selectedNumber={null} onHighlight={vi.fn()} />);
     open();
     fireEvent.change(screen.getByLabelText("Поиск объектов на схеме"), {
-      target: { value: "антонов" },
+      target: { value: "лаймлайт" },
     });
-    expect(screen.getByText("Яблоня Антоновка")).toBeTruthy();
-    expect(screen.queryByText("Теплица")).toBeNull();
+    expect(screen.getByText("Гортензия Лаймлайт")).toBeTruthy();
+    expect(screen.queryByText("Композиция")).toBeNull();
   });
 
   it("тап по результату подсвечивает группу (onHighlight с номером)", () => {
@@ -38,9 +38,9 @@ describe("SearchOnCanvas", () => {
     render(<SearchOnCanvas items={items} selectedNumber={null} onHighlight={onHighlight} />);
     open();
     fireEvent.change(screen.getByLabelText("Поиск объектов на схеме"), {
-      target: { value: "теплиц" },
+      target: { value: "композиц" },
     });
-    fireEvent.click(screen.getByText("Теплица"));
+    fireEvent.click(screen.getByText("Композиция"));
     expect(onHighlight).toHaveBeenCalledWith(3);
   });
 

@@ -12,9 +12,9 @@ beforeEach(() => mockGetHealthDiary.mockReset());
 describe('summarizeHealth', () => {
   it('считает смертность', () => {
     const list: HealthPlanting[] = [
-      { status: 'dead', plantedAt: '2024-05-01', plant: { name: 'Томат', plantType: 'annual' } },
-      { status: 'completed', plantedAt: '2024-05-01', plant: { name: 'Огурец', plantType: 'annual' } },
-      { status: 'active', plantedAt: '2025-05-01', plant: { name: 'Перец', plantType: 'annual' } },
+      { status: 'dead', plantedAt: '2024-05-01', plant: { name: 'Петуния', plantType: 'annual' } },
+      { status: 'completed', plantedAt: '2024-05-01', plant: { name: 'Лобелия', plantType: 'annual' } },
+      { status: 'active', plantedAt: '2025-05-01', plant: { name: 'Сальвия', plantType: 'annual' } },
       { status: 'dead', plantedAt: '2025-05-01', plant: { name: 'Лук', plantType: 'annual' } },
     ];
     const s = summarizeHealth(list);
@@ -25,9 +25,9 @@ describe('summarizeHealth', () => {
 
   it('находит монокультуру (тип в ≥2 годах)', () => {
     const list: HealthPlanting[] = [
-      { status: 'completed', plantedAt: '2024-05-01', plant: { name: 'Томат', plantType: 'annual' } },
-      { status: 'completed', plantedAt: '2025-05-01', plant: { name: 'Огурец', plantType: 'annual' } },
-      { status: 'active', plantedAt: '2024-05-01', plant: { name: 'Яблоня', plantType: 'tree' } },
+      { status: 'completed', plantedAt: '2024-05-01', plant: { name: 'Петуния', plantType: 'annual' } },
+      { status: 'completed', plantedAt: '2025-05-01', plant: { name: 'Лобелия', plantType: 'annual' } },
+      { status: 'active', plantedAt: '2024-05-01', plant: { name: 'Туя', plantType: 'tree' } },
     ];
     const s = summarizeHealth(list);
     expect(s.monocultureTypes).toEqual(['annual']);
@@ -45,8 +45,8 @@ describe('summarizeHealth', () => {
 
 describe('PlantHealthDiary', () => {
   const plantings: HealthPlanting[] = [
-    { status: 'dead', plantedAt: '2024-05-01', plant: { name: 'Томат', plantType: 'annual' } },
-    { status: 'completed', plantedAt: '2025-05-01', plant: { name: 'Огурец', plantType: 'annual' } },
+    { status: 'dead', plantedAt: '2024-05-01', plant: { name: 'Петуния', plantType: 'annual' } },
+    { status: 'completed', plantedAt: '2025-05-01', plant: { name: 'Лобелия', plantType: 'annual' } },
   ];
 
   it('ничего не рендерит без истории', () => {

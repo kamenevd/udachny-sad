@@ -5,17 +5,21 @@ import { describe, it, expect } from "vitest";
 import { parseVoiceEvent } from "./VoiceEventButton";
 
 describe("parseVoiceEvent", () => {
-  it("«полил помидоры» → watering + помидоры", () => {
-    expect(parseVoiceEvent("полил помидоры")).toEqual({
+  it("«полил розы» → watering + розы", () => {
+    expect(parseVoiceEvent("полил розы")).toEqual({
       eventType: "watering",
-      note: "помидоры",
+      note: "розы",
     });
   });
 
-  it("«собрал огурцы» → harvest", () => {
-    expect(parseVoiceEvent("собрал огурцы")).toEqual({
-      eventType: "harvest",
-      note: "огурцы",
+  it("«зацвело у пионов» → blooming", () => {
+    expect(parseVoiceEvent("зацвело у пионов").eventType).toBe("blooming");
+  });
+
+  it("«подстриг изгородь» → pruning", () => {
+    expect(parseVoiceEvent("подстриг изгородь")).toEqual({
+      eventType: "pruning",
+      note: "изгородь",
     });
   });
 
@@ -26,7 +30,7 @@ describe("parseVoiceEvent", () => {
   });
 
   it("распознаёт вредителя", () => {
-    expect(parseVoiceEvent("тля на смородине").eventType).toBe("pest");
+    expect(parseVoiceEvent("тля на розах").eventType).toBe("pest");
   });
 
   it("неизвестная фраза → other, вся фраза в заметку", () => {
@@ -37,7 +41,7 @@ describe("parseVoiceEvent", () => {
   });
 
   it("не чувствителен к регистру", () => {
-    expect(parseVoiceEvent("ПОЛИЛ грядку").eventType).toBe("watering");
+    expect(parseVoiceEvent("ПОЛИЛ клумбу").eventType).toBe("watering");
   });
 
   it("пустая строка → other с пустой заметкой", () => {

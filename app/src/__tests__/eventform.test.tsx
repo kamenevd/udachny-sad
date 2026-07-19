@@ -1,5 +1,5 @@
 /**
- * Тест EventForm — рендер с 12 типами, проверка спец-полей (задача 15.4)
+ * Тест EventForm — рендер с 11 типами, проверка спец-полей (задача 15.4)
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -38,11 +38,11 @@ const baseProps = {
 };
 
 describe("EventForm — типы событий", () => {
-  it("содержит ровно 12 типов событий", () => {
-    expect(EVENT_TYPES).toHaveLength(12);
+  it("содержит ровно 11 типов событий", () => {
+    expect(EVENT_TYPES).toHaveLength(11);
   });
 
-  it("рендерит все 12 кнопок типов при открытии", () => {
+  it("рендерит все 11 кнопок типов при открытии", () => {
     renderForm(<EventForm {...baseProps} />);
     for (const t of EVENT_TYPES) {
       expect(screen.getByText(t.label)).toBeInTheDocument();
@@ -71,26 +71,16 @@ describe("EventForm — типы событий", () => {
   });
 });
 
-describe("EventForm — спец-поля урожая", () => {
-  it("НЕ показывают harvest-поля при типе watering", () => {
+describe("EventForm — садовые типы событий", () => {
+  it("нет типа «Урожай», есть «Укрытие» и «Цветение»", () => {
+    const types = EVENT_TYPES.map((t) => t.type);
+    expect(types).not.toContain("harvest");
+    expect(types).toContain("winterizing");
+    expect(types).toContain("blooming");
     renderForm(<EventForm {...baseProps} />);
-    expect(screen.queryByPlaceholderText("3")).toBeNull();
-    expect(screen.queryByPlaceholderText("кг / вёдер / штук")).toBeNull();
-  });
-
-  it("показывают harvest-поля только при выборе harvest", () => {
-    renderForm(<EventForm {...baseProps} />);
-    fireEvent.click(screen.getByText("Урожай"));
-    expect(screen.getByPlaceholderText("3")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("кг / вёдер / штук")).toBeInTheDocument();
-  });
-
-  it("harvest-поля скрываются при переключении на другой тип", () => {
-    renderForm(<EventForm {...baseProps} />);
-    fireEvent.click(screen.getByText("Урожай"));
-    expect(screen.getByPlaceholderText("3")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Полив"));
-    expect(screen.queryByPlaceholderText("3")).toBeNull();
+    expect(screen.queryByText("Урожай")).toBeNull();
+    expect(screen.getByText("Укрытие")).toBeInTheDocument();
+    expect(screen.getByText("Цветение")).toBeInTheDocument();
   });
 });
 

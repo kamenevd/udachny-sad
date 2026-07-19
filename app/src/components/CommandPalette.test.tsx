@@ -7,8 +7,8 @@ import { CommandPalette } from "./CommandPalette";
 import type { CanvasSearchItem } from "../hooks/useCanvasSearch";
 
 const items: CanvasSearchItem[] = [
-  { id: "1", label: "Грядка с томатами", typeName: "Грядка", number: 1, centroid: { x: 5, y: 5 } },
-  { id: "2", label: "Яблоня", typeName: "Дерево", number: 2, centroid: { x: 9, y: 1 } },
+  { id: "1", label: "Клумба с розами", typeName: "Клумба", number: 1, centroid: { x: 5, y: 5 } },
+  { id: "2", label: "Гортензия", typeName: "Кустарник", number: 2, centroid: { x: 9, y: 1 } },
 ];
 
 beforeEach(() => cleanup());
@@ -35,8 +35,8 @@ describe("CommandPalette", () => {
     render(<CommandPalette items={items} onSelect={onSelect} />);
     openWithHotkey();
     const input = await screen.findByLabelText("Поиск по участку");
-    fireEvent.change(input, { target: { value: "яблон" } });
-    const result = await screen.findByText("Яблоня");
+    fireEvent.change(input, { target: { value: "гортенз" } });
+    const result = await screen.findByText("Гортензия");
     fireEvent.click(result);
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "2" }));
     // после выбора палитра закрывается
@@ -48,8 +48,8 @@ describe("CommandPalette", () => {
     render(<CommandPalette items={items} onSelect={onSelect} />);
     openWithHotkey();
     const input = await screen.findByLabelText("Поиск по участку");
-    fireEvent.change(input, { target: { value: "грядка" } });
-    await screen.findByText("Грядка с томатами");
+    fireEvent.change(input, { target: { value: "клумба" } });
+    await screen.findByText("Клумба с розами");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }));
   });
