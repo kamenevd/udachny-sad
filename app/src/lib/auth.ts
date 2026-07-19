@@ -167,38 +167,64 @@ export function isMobileBrowser(): boolean {
  * В redirect-флоу промис «не завершается» — страница уходит на Яндекс.
  */
 export async function loginWithYandex(): Promise<void> {
-  if (isMobileBrowser()) {
-    await loginWithYandexRedirect();
-    return;
-  }
-  await pb.collection("users").authWithOAuth2({ provider: YANDEX_PROVIDER });
+  // PLAN10 fix: всегда используем redirect flow. PocketBase popup flow
+  // отправляет redirect_uri=https://pb.kdnfx.space/api/oauth2-redirect,
+  // но в настройках Яндекс-приложения зарегистрирован только
+  // https://udacha.kdnfx.space/auth/yandex/callback. Redirect flow
+  // использует именно его и работает везде (десктоп + мобильные).
+  await loginWithYandexRedirect();
 }
 
-/** Redirect-флоу: сохраняем PKCE-параметры и уводим окно на Яндекс. */
+/** Redirect-флоу: кодируем PKCE-параметры в URL hash фрагменте (переживают
+ *  навигацию без localStorage, который может не сработать в SW-контексте).
+ *  ⚠️ Guard от StrictMode double-invoke и повторных кликов. */
+let _redirectInProgress = false;
+
 export async function loginWithYandexRedirect(): Promise<void> {
-  const methods = await pb.collection("users").listAuthMethods();
-  const provider = methods.oauth2.providers.find(
-    (p) => p.name === YANDEX_PROVIDER,
-  );
-  if (!provider) {
-    throw new Error("Яндекс OAuth2 не настроен на сервере PocketBase");
+  if (_redirectInProgress) {
+    return; // уже запущен — не повторяем (StrictMode в dev вызывает дважды)
   }
+  _redirectInProgress = true;
 
-  const redirectUrl = window.location.origin + YANDEX_CALLBACK_PATH;
-  const stored: StoredYandexRedirect = {
-    state: provider.state,
-    codeVerifier: provider.codeVerifier,
-    redirectUrl,
-  };
-  localStorage.setItem(YANDEX_REDIRECT_STORAGE_KEY, JSON.stringify(stored));
+  try {
+    const methods = await pb.collection("users").listAuthMethods();
+    const provider = methods.oauth2.providers.find(
+      (p) => p.name === YANDEX_PROVIDER,
+    );
+    if (!provider) {
+      throw new Error("Яндекс OAuth2 не настроен на сервере PocketBase");
+    }
 
-  // authURL у PocketBase заканчивается на "&redirect_uri=" — дописываем свой.
-  window.location.href = provider.authURL + encodeURIComponent(redirectUrl);
+    const redirectUrl = window.location.origin + YANDEX_CALLBACK_PATH;
+    const stored: StoredYandexRedirect = {
+      state: provider.state,
+      codeVerifier: provider.codeVerifier,
+      redirectUrl,
+    };
+    // Сохраняем в localStorage (best-effort, может не сработать в приватном режиме)
+    try {
+      localStorage.setItem(YANDEX_REDIRECT_STORAGE_KEY, JSON.stringify(stored));
+    } catch {}
+
+    // ⚠️ КРИТИЧНО: дописываем redirect_uri в authURL ПЕРЕД уходом.
+    // authURL у PocketBase заканчивается на «&redirect_uri=» — дописываем свой.
+    const fullAuthUrl = provider.authURL + encodeURIComponent(redirectUrl);
+
+    // Уходим на Яндекс. localStorage.setItem выше СНАЧАЛА,
+    // потом location.href — браузер не сможет прервать запись.
+    window.location.href = fullAuthUrl;
+  } catch (err) {
+    _redirectInProgress = false; // сбрасываем при ошибке, чтобы можно было retry
+    throw err;
+  }
 }
 
 /**
  * Завершение redirect-флоу на /auth/yandex/callback: сверяем state,
  * меняем code на auth-токен. Вызывается из YandexCallback.tsx.
+ *
+ * Если localStorage пустой (приватный режим, SW interference, cleanup),
+ * возвращаем понятную ошибку — пользователь должен войти заново.
  */
 export async function completeYandexRedirect(
   searchParams: URLSearchParams,
