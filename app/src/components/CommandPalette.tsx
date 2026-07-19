@@ -117,7 +117,7 @@ export function CommandPalette({ items, onSelect }: CommandPaletteProps) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onInputKey}
-                placeholder="Грядка, томат «Бычье сердце», яблоня…"
+                placeholder="Клумба, роза «Фламментанц», гортензия…"
                 aria-label="Поиск по участку"
                 className="min-w-0 flex-1 bg-transparent py-1 font-mono text-[16px] text-ink outline-none placeholder:text-ink-muted"
               />

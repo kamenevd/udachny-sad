@@ -18,8 +18,8 @@ import { StampOverlay } from './StampOverlay';
 import { PhotoUpload } from './PhotoUpload';
 import { PhotoGallery } from './PhotoGallery';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
-import { BedContextTooltip } from './canvas/BedContextTooltip';
-import type { LightCondition } from '../lib/bedContext';
+import { CompositionContextTooltip } from './canvas/CompositionContextTooltip';
+import type { LightCondition } from '../lib/compositionContext';
 
 export interface ObjectSheetTarget {
   id: string;
@@ -166,9 +166,9 @@ export function ObjectSheet({ object, gardenId, onClose, onOpenPlaceHistory, lig
 
         {error && <p className="font-mono text-[14px] text-red">{error}</p>}
 
-        {/* Контекст из истории места (задача H.2) — для грядок/клумб/теплиц */}
+        {/* Контекст из истории места (задача H.2) — для клумб/композиций/изгородей */}
         {CONTEXT_TYPES.has(object.type) && (
-          <BedContextTooltip
+          <CompositionContextTooltip
             schemaObjectId={object.id}
             conditions={lightConditions}
           />

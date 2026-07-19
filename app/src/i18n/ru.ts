@@ -6,7 +6,7 @@ export const ru = {
   login: {
     title: "уДачный сад",
     subtitleSignIn: "Войдите, чтобы начать вести учёт растений",
-    subtitleSignUp: "Зарегистрируйтесь — и ни одной грядки без записи!",
+    subtitleSignUp: "Зарегистрируйтесь — и ни одного цветка без записи!",
     emailLabel: "Email",
     emailPlaceholder: "ivan@example.com",
     passwordLabel: "Пароль",

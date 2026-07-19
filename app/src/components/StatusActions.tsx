@@ -143,7 +143,7 @@ export function StatusActions({ plantingId, gardenId, onClosed, status }: Status
             </div>
             <Input
               label="Уточнение места (необязательно)"
-              placeholder="у забора, слева от теплицы"
+              placeholder="у забора, слева от беседки"
               value={positionNote}
               onChange={(e) => setPositionNote(e.target.value)}
             />

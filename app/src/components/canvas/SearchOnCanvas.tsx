@@ -98,7 +98,7 @@ export function SearchOnCanvas({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Грядка, яблоня, теплица…"
+          placeholder="Клумба, туя, композиция…"
           aria-label="Поиск объектов на схеме"
           className="min-w-0 flex-1 bg-transparent font-mono text-[15px] text-ink outline-none placeholder:text-ink-muted"
         />

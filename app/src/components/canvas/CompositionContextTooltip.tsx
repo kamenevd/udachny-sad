@@ -1,37 +1,37 @@
 /**
- * Задача H.2 — контекстный тултип грядки.
+ * Задача H.2 — контекстный тултип клумбы/композиции.
  *
- * Показывается при выборе грядки: освещённость и что росло в прошлом сезоне
- * (с болезнями, если были) — подсказка для севооборота. Данные грузятся из
- * истории места (loadBedContext). Пока грузится — «…», при отсутствии данных
+ * Показывается при выборе клумбы или композиции: освещённость и что росло в
+ * прошлом сезоне (с болезнями, если были) — подсказка для планирования посадок. Данные грузятся из
+ * истории места (loadCompositionContext). Пока грузится — «…», при отсутствии данных
  * тултип не мешает (короткая строка).
  */
 import { useEffect, useState } from "react";
 import {
-  loadBedContext,
-  type BedContext,
+  loadCompositionContext,
+  type CompositionContext,
   type LightCondition,
-} from "../../lib/bedContext";
+} from "../../lib/compositionContext";
 
-interface BedContextTooltipProps {
+interface CompositionContextTooltipProps {
   schemaObjectId: string;
-  /** Условия освещённости пересекающих грядку зон. */
+  /** Условия освещённости пересекающих объект зон. */
   conditions?: LightCondition[];
   className?: string;
 }
 
-export function BedContextTooltip({
+export function CompositionContextTooltip({
   schemaObjectId,
   conditions = [],
   className = "",
-}: BedContextTooltipProps) {
-  const [ctx, setCtx] = useState<BedContext | null>(null);
+}: CompositionContextTooltipProps) {
+  const [ctx, setCtx] = useState<CompositionContext | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    void loadBedContext(schemaObjectId, conditions)
+    void loadCompositionContext(schemaObjectId, conditions)
       .then((c) => {
         if (alive) setCtx(c);
       })

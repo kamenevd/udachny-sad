@@ -29,7 +29,7 @@ import { useExplicationData, groupKey, typeToRussian } from '../components/canva
 import type { SchemaObjectData } from '../components/canvas/useExplicationData';
 import { CommandPalette } from '../components/CommandPalette';
 import { centroidOf, type CanvasSearchItem } from '../hooks/useCanvasSearch';
-import { pointInPolygon, type LightCondition } from '../lib/bedContext';
+import { pointInPolygon, type LightCondition } from '../lib/compositionContext';
 import type { SchemaObjectForNumber } from '../components/canvas/ObjectNumbers';
 import { usePanZoom } from '../components/canvas/usePanZoom';
 import { EditorToolbar, objectTypeInfo } from '../components/canvas/EditorToolbar';

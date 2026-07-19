@@ -315,14 +315,14 @@ export function PlantingForm({
 
         <Input
           label="Уточнение места (необязательно)"
-          placeholder="Северный угол грядки"
+          placeholder="Северный угол клумбы"
           value={positionNote}
           onChange={(e) => setPositionNote(e.target.value)}
         />
 
         <Input
           label="Заметка (необязательно)"
-          placeholder="Рассада из теплицы"
+          placeholder="Саженец из питомника"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />

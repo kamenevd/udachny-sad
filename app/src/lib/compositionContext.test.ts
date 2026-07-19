@@ -1,13 +1,13 @@
 /**
- * Задача H.2 — тесты сборки контекста грядки.
+ * Задача H.2 — тесты сборки контекста клумбы/композиции.
  */
 import { describe, it, expect } from "vitest";
 import {
-  buildBedContext,
+  buildCompositionContext,
   dominantLightLabel,
   pointInPolygon,
-  type BedHistoryPlanting,
-} from "./bedContext";
+  type CompositionHistoryPlanting,
+} from "./compositionContext";
 
 const NOW = new Date("2026-07-18").getTime();
 
@@ -21,15 +21,15 @@ describe("dominantLightLabel", () => {
   });
 });
 
-describe("buildBedContext", () => {
-  const history: BedHistoryPlanting[] = [
+describe("buildCompositionContext", () => {
+  const history: CompositionHistoryPlanting[] = [
     { plantName: "Томаты", plantedAt: "2025-05-01", diseases: ["мучнистая роса"] },
     { plantName: "Огурцы", plantedAt: "2024-05-01", diseases: [] },
     { plantName: "Перец", plantedAt: "2026-05-01", diseases: [] }, // текущий год — не «прошлый сезон»
   ];
 
   it("прошлый сезон — самый свежий год строго до текущего", () => {
-    const ctx = buildBedContext(history, ["sunny"], NOW);
+    const ctx = buildCompositionContext(history, ["sunny"], NOW);
     expect(ctx.lastSeason?.year).toBe(2025);
     expect(ctx.lastSeason?.label).toBe("В прошлом году");
     expect(ctx.lastSeason?.plants).toEqual([
@@ -38,13 +38,13 @@ describe("buildBedContext", () => {
   });
 
   it("считает сезоны и подпись освещённости", () => {
-    const ctx = buildBedContext(history, ["shade", "shade"], NOW);
+    const ctx = buildCompositionContext(history, ["shade", "shade"], NOW);
     expect(ctx.seasonsTracked).toBe(3);
     expect(ctx.lightLabel).toBe("Тень");
   });
 
   it("год N-2 → явная подпись «В NNNN году»", () => {
-    const ctx = buildBedContext(
+    const ctx = buildCompositionContext(
       [{ plantName: "Кабачок", plantedAt: "2024-06-01", diseases: [] }],
       [],
       NOW,
@@ -53,7 +53,7 @@ describe("buildBedContext", () => {
   });
 
   it("нет прошлых сезонов → lastSeason undefined", () => {
-    const ctx = buildBedContext(
+    const ctx = buildCompositionContext(
       [{ plantName: "Редис", plantedAt: "2026-04-01", diseases: [] }],
       [],
       NOW,

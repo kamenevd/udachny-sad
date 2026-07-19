@@ -274,10 +274,10 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
           <div className="mt-20 text-center">
             <div className="mb-4 text-6xl">🌱</div>
             <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
-              Ни одной грядки без записи!
+              Ни одного цветка без записи!
             </p>
             <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
-              Добавьте первый — дом или грядку
+              Добавьте первый сад — дом, клумбы, деревья
             </p>
             <Button
               variant="primary"

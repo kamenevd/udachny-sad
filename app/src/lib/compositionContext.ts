@@ -1,10 +1,10 @@
 /**
- * Задача H.2 — контекст грядки из истории места.
+ * Задача H.2 — контекст клумбы/композиции из истории места.
  *
- * Когда дачник выбирает грядку на канве, полезно сразу увидеть подсказку:
- * какая тут освещённость и что росло в прошлом сезоне (и не было ли болезней) —
- * это влияет на севооборот. Здесь чистая сборка контекста (buildBedContext,
- * покрыта тестами) и async-загрузчик поверх PocketBase (loadBedContext).
+ * Когда садовод выбирает клумбу или композицию на канве, полезно сразу увидеть
+ * подсказку: какая тут освещённость и что росло в прошлом сезоне (и не было ли
+ * болезней) — это влияет на планирование посадок. Здесь чистая сборка контекста (buildCompositionContext,
+ * покрыта тестами) и async-загрузчик поверх PocketBase (loadCompositionContext).
  */
 import {
   journalEvents as journalEventsApi,
@@ -20,8 +20,8 @@ export const CONDITION_LABEL: Record<LightCondition, string> = {
   shade: "Тень",
 };
 
-/** Одна прошлая посадка на грядке для сборки контекста. */
-export interface BedHistoryPlanting {
+/** Одна прошлая посадка на клумбе/в композиции для сборки контекста. */
+export interface CompositionHistoryPlanting {
   plantName: string;
   /** ISO-дата посадки. */
   plantedAt: string;
@@ -29,17 +29,17 @@ export interface BedHistoryPlanting {
   diseases: string[];
 }
 
-export interface BedContextLastSeason {
+export interface CompositionContextLastSeason {
   year: number;
   /** «В прошлом году» либо «В 2023 году». */
   label: string;
   plants: { plantName: string; diseases: string[] }[];
 }
 
-export interface BedContext {
+export interface CompositionContext {
   /** Подпись освещённости (доминирующее условие пересекающих зон). */
   lightLabel?: string;
-  lastSeason?: BedContextLastSeason;
+  lastSeason?: CompositionContextLastSeason;
   /** Сколько сезонов (лет) есть в истории места. */
   seasonsTracked: number;
 }
@@ -85,11 +85,11 @@ export function pointInPolygon(
  * Собирает контекст: освещённость + прошлый сезон. «Прошлый сезон» — самый
  * свежий год строго раньше текущего; если таких нет — не показываем.
  */
-export function buildBedContext(
-  history: BedHistoryPlanting[],
+export function buildCompositionContext(
+  history: CompositionHistoryPlanting[],
   conditions: LightCondition[],
   now: number = Date.now(),
-): BedContext {
+): CompositionContext {
   const lightLabel = dominantLightLabel(conditions);
   const currentYear = new Date(now).getFullYear();
 
@@ -97,7 +97,7 @@ export function buildBedContext(
   const seasonsTracked = new Set(years).size;
 
   const pastYears = years.filter((y) => y < currentYear);
-  let lastSeason: BedContextLastSeason | undefined;
+  let lastSeason: CompositionContextLastSeason | undefined;
   if (pastYears.length > 0) {
     const year = Math.max(...pastYears);
     const plants = history
@@ -114,15 +114,15 @@ export function buildBedContext(
 }
 
 /**
- * Загружает контекст грядки из PocketBase: история посадок + болезни (события
- * disease/pest только для прошлогодних посадок — чтобы не тянуть лишнее).
- * `conditions` — условия освещённости пересекающих грядку зон (из GardenDetail).
+ * Загружает контекст клумбы/композиции из PocketBase: история посадок + болезни
+ * (события disease/pest только для прошлогодних посадок — чтобы не тянуть лишнее).
+ * `conditions` — условия освещённости пересекающих объект зон (из GardenDetail).
  */
-export async function loadBedContext(
+export async function loadCompositionContext(
   schemaObjectId: string,
   conditions: LightCondition[],
   now: number = Date.now(),
-): Promise<BedContext> {
+): Promise<CompositionContext> {
   let historyRecords: Awaited<ReturnType<typeof getHistory>> = [];
   try {
     historyRecords = await getHistory(schemaObjectId);
@@ -132,7 +132,7 @@ export async function loadBedContext(
 
   const currentYear = new Date(now).getFullYear();
 
-  const history: BedHistoryPlanting[] = await Promise.all(
+  const history: CompositionHistoryPlanting[] = await Promise.all(
     historyRecords.map(async (p) => {
       const plantName = p.plant?.name ?? p.notes ?? "Посадка";
       // Болезни тянем только для прошлогодних посадок.
@@ -153,5 +153,5 @@ export async function loadBedContext(
     }),
   );
 
-  return buildBedContext(history, conditions, now);
+  return buildCompositionContext(history, conditions, now);
 }

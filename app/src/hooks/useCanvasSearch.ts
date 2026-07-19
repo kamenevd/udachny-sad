@@ -12,7 +12,7 @@ export interface CanvasSearchItem {
   id: string;
   /** Название объекта (label/имя посадки). */
   label: string;
-  /** Русское имя типа («Грядка», «Яблоня»). */
+  /** Русское имя типа («Клумба», «Туя»). */
   typeName: string;
   /** Сорт/примечание (если есть). */
   variety?: string;
