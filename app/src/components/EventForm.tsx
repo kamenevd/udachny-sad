@@ -1,7 +1,7 @@
 /**
  * EventForm — форма события журнала (задача 5.1).
- * 12 типов по-русски, дата, заголовок, описание; спец-поля:
- * урожай (количество + единица), болезнь/вредитель (диагноз, тяжесть).
+ * 11 типов по-русски, дата, заголовок, описание; спец-поля:
+ * болезнь/вредитель (диагноз, тяжесть).
  * Работает и на создание, и на редактирование (задача 5.2).
  */
 
@@ -18,14 +18,13 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useQueuedPbAction } from '../hooks/useQueuedPbAction';
 import { VoiceEventButton, type ParsedVoiceEvent } from './VoiceEventButton';
 
-/** 12 типов событий журнала (§2.8 ARCHITECTURE) */
+/** 11 типов событий журнала (§2.8 ARCHITECTURE) */
 export const EVENT_TYPES: { type: string; label: string; icon: string }[] = [
   { type: 'planting', label: 'Посадка', icon: '🌱' },
   { type: 'watering', label: 'Полив', icon: '💧' },
   { type: 'blooming', label: 'Цветение', icon: '🌸' },
-  { type: 'fruiting', label: 'Плодоношение', icon: '🍎' },
-  { type: 'harvest', label: 'Урожай', icon: '🧺' },
   { type: 'pruning', label: 'Обрезка', icon: '✂️' },
+  { type: 'winterizing', label: 'Укрытие', icon: '❄️' },
   { type: 'disease', label: 'Болезнь', icon: '🦠' },
   { type: 'pest', label: 'Вредитель', icon: '🐛' },
   { type: 'fertilizing', label: 'Подкормка', icon: '🧪' },
@@ -62,7 +61,6 @@ export interface EventFormTarget {
   title?: string;
   description?: string;
   metadata?: {
-    harvest?: { quantity?: number; unit?: string };
     diagnosis?: string;
     severity?: string;
   };
@@ -92,8 +90,6 @@ export function EventForm({ open, plantingId, event, onClose, onSaved }: EventFo
   const [date, setDate] = useState(formatRuDate(Date.now()));
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [harvestQty, setHarvestQty] = useState('');
-  const [harvestUnit, setHarvestUnit] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [severity, setSeverity] = useState('');
   const [error, setError] = useState('');
@@ -109,12 +105,6 @@ export function EventForm({ open, plantingId, event, onClose, onSaved }: EventFo
     setDate(formatRuDate(event ? new Date(event.eventDate).getTime() : Date.now()));
     setTitle(event?.title ?? '');
     setDescription(event?.description ?? '');
-    setHarvestQty(
-      event?.metadata?.harvest?.quantity != null
-        ? String(event.metadata.harvest.quantity)
-        : '',
-    );
-    setHarvestUnit(event?.metadata?.harvest?.unit ?? '');
     setDiagnosis(event?.metadata?.diagnosis ?? '');
     setSeverity(event?.metadata?.severity ?? '');
     setError('');
@@ -129,11 +119,10 @@ export function EventForm({ open, plantingId, event, onClose, onSaved }: EventFo
       return;
     }
     setDirty(true);
-  }, [open, eventType, date, title, description, harvestQty, harvestUnit, diagnosis, severity]);
+  }, [open, eventType, date, title, description, diagnosis, severity]);
 
   useUnsavedChanges(open && dirty && !busy);
 
-  const isHarvest = eventType === 'harvest';
   const isAilment = eventType === 'disease' || eventType === 'pest';
 
   // Задача G.2 — голосовой ввод: тип события из глагола, остаток фразы в описание.
@@ -147,27 +136,14 @@ export function EventForm({ open, plantingId, event, onClose, onSaved }: EventFo
     if (!eventDateMs) return setError('Дата — в формате дд.мм.гггг');
     const eventDate = new Date(eventDateMs).toISOString();
 
-    const qty = harvestQty.trim() ? parseFloat(harvestQty) : undefined;
-    if (harvestQty.trim() && (qty === undefined || isNaN(qty) || qty <= 0)) {
-      return setError('Количество урожая — число больше нуля');
-    }
-
     // metadata собираем только из заполненных спец-полей
     let metadata:
       | {
-          harvest?: { quantity?: number; unit?: string };
           diagnosis?: string;
           severity?: string;
         }
       | undefined;
-    if (isHarvest && (qty !== undefined || harvestUnit.trim())) {
-      metadata = {
-        harvest: {
-          quantity: qty,
-          unit: harvestUnit.trim() || undefined,
-        },
-      };
-    } else if (isAilment && (diagnosis.trim() || severity)) {
+    if (isAilment && (diagnosis.trim() || severity)) {
       metadata = {
         diagnosis: diagnosis.trim() || undefined,
         severity: severity || undefined,
@@ -263,25 +239,6 @@ export function EventForm({ open, plantingId, event, onClose, onSaved }: EventFo
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-
-        {/* Спец-поля: урожай */}
-        {isHarvest && (
-          <div className="flex gap-3">
-            <Input
-              label="Сколько собрали"
-              type="number"
-              placeholder="3"
-              value={harvestQty}
-              onChange={(e) => setHarvestQty(e.target.value)}
-            />
-            <Input
-              label="Единица"
-              placeholder="кг / вёдер / штук"
-              value={harvestUnit}
-              onChange={(e) => setHarvestUnit(e.target.value)}
-            />
-          </div>
-        )}
 
         {/* Спец-поля: болезнь / вредитель */}
         {isAilment && (

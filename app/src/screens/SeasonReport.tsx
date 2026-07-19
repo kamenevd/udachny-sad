@@ -2,7 +2,7 @@
  * SeasonReport — годовой отчёт участка (задача 33.1).
  *
  * Сводка за сезон (год): сколько посадок начато, сколько активно,
- * сколько погибло, урожаи по единицам, болезни/вредители/поливы.
+ * сколько погибло, цветения, болезни/вредители/поливы.
  * Печать через window.print() — отдельный компактный layout для листа.
  */
 
@@ -113,10 +113,7 @@ export function SeasonReport({ gardenId, gardenName, onBack }: SeasonReportProps
                 <StatRow label="Посадок начато" value={stats.plantingsStarted} />
                 <StatRow label="Растёт сейчас" value={stats.plantingsActive} />
                 <StatRow label="Погибло" value={stats.deaths} />
-                <StatRow label="Записей урожая" value={stats.harvestCount} />
-                {stats.harvestByUnit.map(({ unit, quantity }) => (
-                  <StatRow key={unit} label={`Собрано, ${unit}`} value={quantity} />
-                ))}
+                <StatRow label="Записей цветения" value={stats.bloomingCount} />
                 <StatRow label="Болезней отмечено" value={stats.diseaseCount} />
                 <StatRow label="Вредителей отмечено" value={stats.pestCount} />
                 <StatRow label="Поливов записано" value={stats.wateringCount} />
@@ -150,15 +147,9 @@ export function SeasonReport({ gardenId, gardenName, onBack }: SeasonReportProps
                 <td className="py-1.5 text-right font-semibold">{stats.deaths}</td>
               </tr>
               <tr className="border-b border-black/20">
-                <td className="py-1.5">Записей урожая</td>
-                <td className="py-1.5 text-right font-semibold">{stats.harvestCount}</td>
+                <td className="py-1.5">Записей цветения</td>
+                <td className="py-1.5 text-right font-semibold">{stats.bloomingCount}</td>
               </tr>
-              {stats.harvestByUnit.map(({ unit, quantity }) => (
-                <tr key={unit} className="border-b border-black/20">
-                  <td className="py-1.5">Собрано, {unit}</td>
-                  <td className="py-1.5 text-right font-semibold">{quantity}</td>
-                </tr>
-              ))}
               <tr className="border-b border-black/20">
                 <td className="py-1.5">Болезней отмечено</td>
                 <td className="py-1.5 text-right font-semibold">{stats.diseaseCount}</td>

@@ -91,8 +91,8 @@ export interface Planting extends RecordModel {
 }
 
 export type EventType =
-  | "planting" | "watering" | "blooming" | "fruiting" | "harvest"
-  | "pruning" | "disease" | "pest" | "fertilizing" | "transplant"
+  | "planting" | "watering" | "blooming" | "pruning" | "winterizing"
+  | "disease" | "pest" | "fertilizing" | "transplant"
   | "death" | "other";
 
 export interface JournalEvent extends RecordModel {
@@ -103,7 +103,6 @@ export interface JournalEvent extends RecordModel {
   description?: string;
   metadata?: {
     weather?: { temperature?: number; condition?: string };
-    harvest?: { quantity?: number; unit?: string };
     diagnosis?: string;
     severity?: string;
     notes?: string;

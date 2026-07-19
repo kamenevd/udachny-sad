@@ -351,14 +351,6 @@ export function PlantingDetail({ plantingId, onBack, onNavigate }: PlantingDetai
                               {ev.description}
                             </p>
                           )}
-                          {ev.metadata?.harvest &&
-                            (ev.metadata.harvest.quantity != null ||
-                              ev.metadata.harvest.unit) && (
-                              <p className="mt-1 font-mono text-[14px] text-blueink">
-                                Собрано: {ev.metadata.harvest.quantity ?? '—'}{' '}
-                                {ev.metadata.harvest.unit ?? ''}
-                              </p>
-                            )}
                           {ev.metadata?.diagnosis && (
                             <p className="mt-1 font-mono text-[14px] text-red">
                               Диагноз: {ev.metadata.diagnosis}

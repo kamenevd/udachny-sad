@@ -2,7 +2,7 @@
  * Dashboard — экран статистики (PLAN6 задача 35.2).
  *
  * Сводка по всем участкам пользователя: всего растений в справочнике,
- * активных посадок, урожаев за текущий год, стрик записей в журнале.
+ * активных посадок, цветений за текущий год, стрик записей в журнале.
  * Данные — через PocketBase (lib/pb.ts, lib/pbStats.ts), без Convex
  * (см. lib/pbStats.ts — агрегации считаются на клиенте).
  */
@@ -29,7 +29,7 @@ function StatRow({ label, value }: { label: string; value: number | string }) {
 interface DashboardStats {
   totalPlants: number;
   activePlantings: number;
-  harvestsThisYear: number;
+  bloomsThisYear: number;
   streak: StreakResult;
 }
 
@@ -51,14 +51,14 @@ async function loadDashboardStats(): Promise<DashboardStats> {
   const seasonStatsPerGarden = await Promise.all(
     gardenIds.map((id) => getSeasonStats(id, year)),
   );
-  const harvestsThisYear = seasonStatsPerGarden.reduce(
-    (sum, s) => sum + (s?.harvestCount ?? 0),
+  const bloomsThisYear = seasonStatsPerGarden.reduce(
+    (sum, s) => sum + (s?.bloomingCount ?? 0),
     0,
   );
 
   const streak = await getStreakForGardens(gardenIds);
 
-  return { totalPlants: plants.length, activePlantings, harvestsThisYear, streak };
+  return { totalPlants: plants.length, activePlantings, bloomsThisYear, streak };
 }
 
 export function Dashboard({ onBack }: DashboardProps) {
@@ -109,7 +109,7 @@ export function Dashboard({ onBack }: DashboardProps) {
               <div className="rounded-[6px] border border-ink p-4">
                 <StatRow label="Растений в справочнике" value={stats.totalPlants} />
                 <StatRow label="Активных посадок" value={stats.activePlantings} />
-                <StatRow label="Урожаев в этом году" value={stats.harvestsThisYear} />
+                <StatRow label="Цветений в этом году" value={stats.bloomsThisYear} />
                 <StatRow
                   label="Дней подряд с записями"
                   value={stats.streak.days}

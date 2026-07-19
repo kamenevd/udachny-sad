@@ -63,8 +63,7 @@ export interface SeasonStats {
   plantingsStarted: number;
   plantingsActive: number;
   deaths: number;
-  harvestCount: number;
-  harvestByUnit: { unit: string; quantity: number }[];
+  bloomingCount: number;
   diseaseCount: number;
   pestCount: number;
   wateringCount: number;
@@ -83,8 +82,7 @@ export async function getSeasonStats(gardenId: string, year: number): Promise<Se
   ).length;
   const plantingsActive = plantings.filter((p) => p.status === "active").length;
 
-  let harvestCount = 0;
-  const harvestByUnit = new Map<string, number>();
+  let bloomingCount = 0;
   let diseaseCount = 0;
   let pestCount = 0;
   let wateringCount = 0;
@@ -97,13 +95,8 @@ export async function getSeasonStats(gardenId: string, year: number): Promise<Se
       if (!inYear(event.eventDate)) continue;
       totalEventsInYear++;
 
-      if (event.eventType === "harvest") {
-        harvestCount++;
-        const qty = event.metadata?.harvest?.quantity;
-        if (qty != null) {
-          const unit = event.metadata?.harvest?.unit ?? "шт";
-          harvestByUnit.set(unit, (harvestByUnit.get(unit) ?? 0) + qty);
-        }
+      if (event.eventType === "blooming") {
+        bloomingCount++;
       } else if (event.eventType === "disease") {
         diseaseCount++;
       } else if (event.eventType === "pest") {
@@ -119,8 +112,7 @@ export async function getSeasonStats(gardenId: string, year: number): Promise<Se
     plantingsStarted,
     plantingsActive,
     deaths,
-    harvestCount,
-    harvestByUnit: Array.from(harvestByUnit.entries()).map(([unit, quantity]) => ({ unit, quantity })),
+    bloomingCount,
     diseaseCount,
     pestCount,
     wateringCount,
