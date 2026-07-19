@@ -9,7 +9,7 @@ import { forwardRef } from 'react';
 import { Stage, Layer, Rect, Line, Circle, Shape, Group } from 'react-konva';
 import type Konva from 'konva';
 import { canvasColors } from '../../theme/canvasColors';
-import { drawBedPattern, drawWaterPattern, drawTreeCrown, drawShrubCrown } from '../../theme/canvasPatterns';
+import { drawCompositionPattern, drawWaterPattern, drawTreeCrown, drawShrubCrown } from '../../theme/canvasPatterns';
 import { ObjectNumbers } from './ObjectNumbers';
 import type { SchemaObjectForNumber } from './ObjectNumbers';
 import type { SchemaObjectData } from './useExplicationData';
@@ -47,22 +47,22 @@ function pointRadiusM(type: string): number {
 
 // ─── Стиль объектов по типу (§3.2) ───────────────────────────────────
 
-type PatternKind = 'image' | 'bed' | 'water' | null;
+type PatternKind = 'image' | 'composition' | 'water' | null;
 
 interface TypeStyle {
   fill: string;
   pattern: PatternKind;
-  /** Ключ в карте загруженных паттернов (building, greenhouse, grass, gravel, flower) */
+  /** Ключ в карте загруженных паттернов (building, grass, gravel, flower) */
   patternKey?: string;
 }
 
 const typeStyle: Record<string, TypeStyle> = {
   building: { fill: canvasColors.buildingFill, pattern: 'image', patternKey: 'building' },
-  greenhouse: { fill: canvasColors.greenhouseFill, pattern: 'image', patternKey: 'greenhouse' },
   lawn: { fill: canvasColors.grassFill, pattern: 'image', patternKey: 'grass' },
   path: { fill: canvasColors.pathFill, pattern: 'image', patternKey: 'gravel' },
   flowerbed: { fill: canvasColors.flowerFill, pattern: 'image', patternKey: 'flower' },
-  bed: { fill: canvasColors.bedFill, pattern: 'bed' },
+  composition: { fill: canvasColors.compositionFill, pattern: 'composition' },
+  hedge: { fill: canvasColors.hedgeFill, pattern: 'image', patternKey: 'grass' },
   water: { fill: canvasColors.waterFill, pattern: 'water' },
 };
 
@@ -494,7 +494,7 @@ function ObjectShape({
           />
         )}
 
-      {style.pattern === 'bed' && (
+      {style.pattern === 'composition' && (
         <Shape
           listening={false} // Декор не ловит хиты
           sceneFunc={(ctx: Konva.Context) => {
@@ -509,7 +509,7 @@ function ObjectShape({
             });
             c.closePath();
             c.clip();
-            drawBedPattern(c, minX, minY, w, h);
+            drawCompositionPattern(c, minX, minY, w, h);
             c.restore();
           }}
         />

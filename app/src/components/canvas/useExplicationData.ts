@@ -44,16 +44,16 @@ export function typeToRussian(type: string): string {
   switch (type) {
     case 'building':
       return 'Постройка';
-    case 'greenhouse':
-      return 'Теплица';
     case 'lawn':
       return 'Газон';
     case 'path':
       return 'Дорожка';
-    case 'bed':
-      return 'Грядка';
     case 'flowerbed':
       return 'Клумба';
+    case 'composition':
+      return 'Композиция';
+    case 'hedge':
+      return 'Живая изгородь';
     case 'tree':
       return 'Дерево';
     case 'shrub':

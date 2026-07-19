@@ -21,11 +21,11 @@ export interface ObjectTypeInfo {
 /** 11 типов объектов схемы (ARCHITECTURE §2.1 schemaObjects.type) */
 export const OBJECT_TYPES: ObjectTypeInfo[] = [
   { type: 'building', label: 'Строение', icon: '🏠', geometry: 'polygon' },
-  { type: 'greenhouse', label: 'Теплица', icon: '🪴', geometry: 'polygon' },
   { type: 'lawn', label: 'Газон', icon: '🌿', geometry: 'polygon' },
   { type: 'path', label: 'Дорожка', icon: '🛤️', geometry: 'line' },
-  { type: 'bed', label: 'Грядка', icon: '🥕', geometry: 'polygon' },
   { type: 'flowerbed', label: 'Клумба', icon: '🌸', geometry: 'polygon' },
+  { type: 'composition', label: 'Композиция', icon: '💐', geometry: 'polygon' },
+  { type: 'hedge', label: 'Изгородь', icon: '🍃', geometry: 'line' },
   { type: 'tree', label: 'Дерево', icon: '🌳', geometry: 'point' },
   { type: 'shrub', label: 'Кустарник', icon: '🌲', geometry: 'point' },
   { type: 'water', label: 'Водоём', icon: '💧', geometry: 'polygon' },

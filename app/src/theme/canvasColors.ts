@@ -23,8 +23,8 @@ export const canvasColors = {
   grassFill: '#E9F0CF',
   grassPattern: '#7FA457',
 
-  bedFill: '#C08A57',
-  bedPattern: '#8F6741',
+  compositionFill: '#DCC9E8',
+  compositionPattern: '#9C74C4',
 
   flowerFill: '#E8A0AC',
   flowerPattern: '#C4747F',
@@ -35,8 +35,7 @@ export const canvasColors = {
   buildingFill: '#C9C2AC',
   buildingPattern: 'rgba(32,42,56,.55)',
 
-  greenhouseFill: '#E2EEE9',
-  greenhousePattern: '#6E8F86',
+  hedgeFill: '#A8C97F',
 
   gateFill: '#C9C2AC',
 

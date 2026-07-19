@@ -61,16 +61,16 @@ export const grassPattern = createPattern(26, 26, (ctx) => {
 });
 
 /**
- * Параллельные бороздки (пашня) — добавляется к грядкам
+ * Параллельные линии — текстура для клумб/композиций (миксбордеров)
  */
-export function drawBedPattern(
+export function drawCompositionPattern(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   width: number,
   height: number
 ) {
-  ctx.strokeStyle = canvasColors.bedPattern;
+  ctx.strokeStyle = canvasColors.compositionPattern;
   ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
   const step = 20;
@@ -115,20 +115,6 @@ export const buildingPattern = createPattern(8, 8, (ctx) => {
   ctx.beginPath();
   ctx.moveTo(0, 0);
   ctx.lineTo(0, 8);
-  ctx.stroke();
-});
-
-/**
- * Сетка остекления (теплица) — обе диагонали
- */
-export const greenhousePattern = createPattern(12, 12, (ctx) => {
-  ctx.strokeStyle = canvasColors.greenhousePattern;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, 12);
-  ctx.lineTo(12, 0);
-  ctx.moveTo(0, 0);
-  ctx.lineTo(12, 12);
   ctx.stroke();
 });
 

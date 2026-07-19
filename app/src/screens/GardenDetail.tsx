@@ -23,7 +23,6 @@ import {
   gravelPattern,
   flowerPattern,
   buildingPattern,
-  greenhousePattern,
 } from '../theme/canvasPatterns';
 import { getTimeOfDay, getSkyGradient, isNightMode } from '../theme/sky';
 import { useExplicationData, groupKey, typeToRussian } from '../components/canvas/useExplicationData';
@@ -83,7 +82,6 @@ const PATTERN_URIS: Record<string, string> = {
   gravel: gravelPattern,
   flower: flowerPattern,
   building: buildingPattern,
-  greenhouse: greenhousePattern,
 };
 
 /**
@@ -221,7 +219,7 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
 
   // ─── Режим редактора (задача 3.2) ─────────────────────────────────
   const [editorMode, setEditorMode] = useState<EditorMode>('view');
-  const [selectedType, setSelectedType] = useState('bed');
+  const [selectedType, setSelectedType] = useState('flowerbed');
 
   // ─── Pan/zoom Stage (задача 3.1) ──────────────────────────────────
   // В режимах рисования pan/zoom выключен — тапы уходят в рисование

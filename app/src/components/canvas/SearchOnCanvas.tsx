@@ -17,11 +17,11 @@ import { typeToRussian } from './useExplicationData';
 /** Русские имена всех типов — чтобы искать «дерево», а не только по label. */
 const TYPE_KEYWORDS = [
   'building',
-  'greenhouse',
   'lawn',
   'path',
-  'bed',
   'flowerbed',
+  'composition',
+  'hedge',
   'tree',
   'shrub',
   'water',

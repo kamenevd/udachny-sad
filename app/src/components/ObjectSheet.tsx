@@ -38,7 +38,7 @@ interface ObjectSheetProps {
 }
 
 /** Типы объектов, для которых показываем контекст истории места (H.2). */
-const CONTEXT_TYPES = new Set(['bed', 'flowerbed', 'greenhouse']);
+const CONTEXT_TYPES = new Set(['flowerbed', 'composition', 'hedge']);
 
 export function ObjectSheet({ object, gardenId, onClose, onOpenPlaceHistory, lightConditions }: ObjectSheetProps) {
   const updateObject = useSafePbAction(

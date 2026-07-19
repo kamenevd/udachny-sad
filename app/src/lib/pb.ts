@@ -38,8 +38,8 @@ export interface Garden extends RecordModel {
 }
 
 export type SchemaObjectType =
-  | "building" | "greenhouse" | "lawn" | "path" | "bed"
-  | "flowerbed" | "tree" | "shrub" | "water" | "gate" | "other";
+  | "building" | "lawn" | "path" | "flowerbed" | "composition" | "hedge"
+  | "tree" | "shrub" | "water" | "gate" | "other";
 
 export interface SchemaObject extends RecordModel {
   gardenId: string;
