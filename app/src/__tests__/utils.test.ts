@@ -74,8 +74,8 @@ describe('eventTypeInfo', () => {
     expect(info.icon).toBe('📝');
   });
 
-  it('всего 12 типов событий', () => {
-    expect(EVENT_TYPES).toHaveLength(12);
+  it('всего 11 типов событий', () => {
+    expect(EVENT_TYPES).toHaveLength(11);
   });
 
   it('все типы имеют уникальные значения', () => {
