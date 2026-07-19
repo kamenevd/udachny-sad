@@ -26,8 +26,8 @@ const NOTCH = 12;
 /** clip-path вымпела: прямоугольник слева, V-образный срез справа */
 const pennantClip = `polygon(0 0, calc(100% - ${NOTCH}px) 0, 100% 50%, calc(100% - ${NOTCH}px) 100%, 0 100%)`;
 
-/** Склонение слова «день» для числа дней */
-function pluralizeDays(n: number): string {
+/** Склонение слова «день» для числа дней (используется также в useWateringReminder) */
+export function pluralizeDays(n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 === 1 && mod100 !== 11) return 'ДЕНЬ';

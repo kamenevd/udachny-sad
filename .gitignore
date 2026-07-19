@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 app/dist/
+app/dist-bak*/
+app/dist.rootowned/
 *.tsbuildinfo
 
 # Environment & secrets

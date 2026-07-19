@@ -1,15 +1,31 @@
-import { defineSchema, defineTable } from "./_generated/server";
+import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  // Служебные таблицы Convex Auth (authSessions, authAccounts и т.д.)
+  ...authTables,
+
+  // Переопределяем users: поля Convex Auth (все опциональные — документ
+  // создаёт сам Convex Auth при регистрации) + бизнес-поля из ARCHITECTURE §2.1.
+  // Бизнес-поля опциональны и доводятся helper-ом getOrCreateUser (users.ts).
   users: defineTable({
-    name: v.string(),
-    email: v.string(),
+    // — поля Convex Auth —
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    // — бизнес-поля —
     role: v.optional(v.string()),
     locale: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_email", ["email"]),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
 
   gardens: defineTable({
     ownerId: v.id("users"),

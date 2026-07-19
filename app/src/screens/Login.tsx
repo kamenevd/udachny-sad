@@ -1,90 +1,235 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { pb } from "../lib/pb";
+import { loginWithYandex, mountTelegramLoginWidget } from "../lib/auth";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
+import { SkipLink } from '../components/SkipLink';
+import { ResetPassword } from './ResetPassword';
+import { t } from '../i18n';
 
-interface LoginProps {
-  onLogin: () => void;
-}
+type Flow = "signIn" | "signUp";
 
-export function Login({ onLogin }: LoginProps) {
+const TELEGRAM_BOT_USERNAME = "udacha_auth_bot";
+
+// Демо-аккаунт (PLAN10 B.1) — обычный email-пользователь PocketBase,
+// кнопка просто подставляет креды и логинится той же email-логикой.
+const DEMO_EMAIL = "demo@udacha.local";
+const DEMO_PASSWORD = "demo2026";
+
+export function Login() {
+  const [flow, setFlow] = useState<Flow>("signIn");
+  const [showReset, setShowReset] = useState(false);
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [oauthError, setOauthError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [tgFailed, setTgFailed] = useState(false);
+  const tgContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const signIn = async (
+    emailArg: string,
+    passwordArg: string,
+    flowArg: Flow,
+  ) => {
+    setError("");
+    setOauthError("");
+    setSubmitting(true);
+    try {
+      const users = pb.collection("users");
+      if (flowArg === "signUp") {
+        // PocketBase: сначала создаём запись, затем авторизуемся ей.
+        await users.create({
+          email: emailArg,
+          password: passwordArg,
+          passwordConfirm: passwordArg,
+          emailVisibility: true,
+        });
+      }
+      await users.authWithPassword(emailArg, passwordArg);
+      // Успех — pb.authStore.onChange переключит гейт на приложение (main.tsx).
+    } catch {
+      setError(
+        flowArg === "signIn" ? t("login.errorSignIn") : t("login.errorSignUp"),
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    console.log("Magic link requested for:", email);
-    setSent(true);
-    onLogin();
+    if (!email || !password) return;
+    await signIn(email, password, flow);
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Google OAuth clicked");
-    onLogin();
+  const handleDemo = async () => {
+    // Подставляем креды в форму (видно пользователю) и логинимся программно.
+    setFlow("signIn");
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    await signIn(DEMO_EMAIL, DEMO_PASSWORD, "signIn");
   };
 
-  if (sent) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-6 bg-paper">
-        <div className="w-full max-w-sm text-center">
-          <div className="mb-4 text-5xl">📧</div>
-          <h1 className="mb-3 text-[30px] leading-[1.1] font-poster font-semibold uppercase tracking-[0.03em] text-ink">
-            ПРОВЕРЬТЕ ПОЧТУ
-          </h1>
-          <p className="text-[17px] leading-[1.55] text-ink-muted">
-            Мы отправили ссылку для входа на {email}
-          </p>
-        </div>
-      </div>
+  const handleYandex = async () => {
+    setError("");
+    setOauthError("");
+    setSubmitting(true);
+    try {
+      await loginWithYandex();
+      // Успех (popup flow) — authStore.onChange переключит гейт;
+      // в redirect flow страница уже ушла на Яндекс и сюда не вернётся.
+    } catch {
+      setOauthError(t("login.errorOAuth"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Telegram Login Widget — монтируем в контейнер, размонтируем при уходе
+  // на экран сброса пароля (контейнер исчезает из DOM). Если скрипт не
+  // загрузился за 5 с (telegram.org заблокирован) — показываем фолбэк (B.3).
+  useEffect(() => {
+    if (showReset) return;
+    const el = tgContainerRef.current;
+    if (!el) return;
+    const { ready, cleanup } = mountTelegramLoginWidget(
+      el,
+      TELEGRAM_BOT_USERNAME,
     );
+    ready.catch(() => setTgFailed(true));
+    return cleanup;
+  }, [showReset]);
+
+  if (showReset) {
+    return <ResetPassword onBack={() => setShowReset(false)} />;
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-6 bg-paper">
+    <>
+      <SkipLink />
+      <main id="main-content" className="flex min-h-screen flex-col items-center justify-center px-4 py-6 bg-paper">
       <div className="w-full max-w-sm flex flex-col gap-4">
         <div className="text-center">
           <div className="mb-3 text-6xl">🌾</div>
           <h1 className="text-[30px] leading-[1.1] font-poster font-semibold uppercase tracking-[0.03em] text-ink">
-            уДачный сад
+            {t("login.title")}
           </h1>
           <p className="mt-3 text-[17px] leading-[1.55] text-ink-muted">
-            Войдите, чтобы начать вести учёт растений
+            {flow === "signIn"
+              ? t("login.subtitleSignIn")
+              : t("login.subtitleSignUp")}
           </p>
         </div>
 
-        <form onSubmit={handleEmailLogin} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
-            label="Email"
+            label={t("login.emailLabel")}
             type="email"
-            placeholder="ivan@example.com"
+            placeholder={t("login.emailPlaceholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
-          <Button type="submit" className="w-full">Войти по email</Button>
+          <Input
+            label={t("login.passwordLabel")}
+            type="password"
+            placeholder={t("login.passwordPlaceholder")}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={flow === "signIn" ? "current-password" : "new-password"}
+            required
+          />
+          {error && <p className="text-[15px] font-mono text-red">{error}</p>}
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting
+              ? t("login.submitting")
+              : flow === "signIn"
+                ? t("login.signIn")
+                : t("login.signUp")}
+          </Button>
         </form>
 
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-ink" />
-          </div>
-          <div className="relative flex justify-center">
-            <span className="bg-paper px-4 text-sm font-mono text-ink-muted">или</span>
-          </div>
+        <button
+          type="button"
+          className="text-[15px] font-mono text-blueink underline underline-offset-4"
+          onClick={() => {
+            setFlow(flow === "signIn" ? "signUp" : "signIn");
+            setError("");
+          }}
+        >
+          {flow === "signIn"
+            ? t("login.switchToSignUp")
+            : t("login.switchToSignIn")}
+        </button>
+
+        {flow === "signIn" && (
+          <button
+            type="button"
+            className="text-[15px] font-mono text-ink-muted underline underline-offset-4"
+            onClick={() => {
+              setShowReset(true);
+              setError("");
+            }}
+          >
+            Забыли пароль?
+          </button>
+        )}
+
+        <div className="flex items-center gap-3" aria-hidden="true">
+          <div className="h-px flex-1 bg-ink-muted/40" />
+          <span className="text-[13px] font-mono uppercase text-ink-muted">
+            {t("login.or")}
+          </span>
+          <div className="h-px flex-1 bg-ink-muted/40" />
         </div>
 
-        <Button variant="secondary" onClick={handleGoogleLogin} className="w-full">
-          <span className="flex items-center justify-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-            </svg>
-            Войти через Google
-          </span>
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          disabled={submitting}
+          onClick={handleYandex}
+        >
+          {t("login.yandexLogin")}
         </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          disabled={submitting}
+          onClick={handleDemo}
+        >
+          🎭 Демо-вход
+        </Button>
+
+        {oauthError && (
+          <p role="alert" className="text-[15px] font-mono text-red">
+            {oauthError}
+          </p>
+        )}
+
+        <div className="text-center">
+          <p className="mb-2 text-[13px] font-mono text-ink-muted">
+            {t("login.telegramHint")}
+          </p>
+          <div
+            ref={tgContainerRef}
+            data-testid="telegram-widget-container"
+            className="flex min-h-[48px] justify-center"
+          />
+          {tgFailed && (
+            <p role="alert" className="mt-2 text-[15px] font-mono text-red">
+              Telegram-виджет не загрузился (возможно, заблокирован). Войдите
+              через Яндекс или email.
+            </p>
+          )}
+        </div>
+
       </div>
-    </div>
+      </main>
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_CONVEX_URL?: string;
+  readonly VITE_GOOGLE_ENABLED?: string;
 }
 
 interface ImportMeta {

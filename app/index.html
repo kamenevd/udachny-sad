@@ -3,11 +3,72 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>уДачный сад</title>
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- SEO (задача 14.2) -->
+    <title>уДачный сад — журнал вашего участка</title>
+    <meta
+      name="description"
+      content="уДачный сад — веб-сервис, где дачники создают схему своего участка и годами накапливают знания о нём. Растения, журнал наблюдений, фото и история места."
+    />
+    <meta name="theme-color" content="#F7EFD9" />
+
+    <!-- Splash screen (задача 36.3) — показывается мгновенно, до загрузки JS-бандла;
+         React при монтировании (createRoot(#root).render) заменяет это содержимое. -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: #f7efd9;
+        color: #1a1a1a;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      }
+      #splash img {
+        width: 72px;
+        height: 72px;
+        animation: splash-pulse 1.6s ease-in-out infinite;
+      }
+      #splash span {
+        font-size: 17px;
+        letter-spacing: 0.02em;
+      }
+      @keyframes splash-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(0.94); }
+      }
+    </style>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="уДачный сад — журнал вашего участка" />
+    <meta
+      property="og:description"
+      content="Создайте схему участка, записывайте посадки и наблюдения. Через годы — полная история вашего сада."
+    />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:locale" content="ru_RU" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="уДачный сад — журнал вашего участка" />
+    <meta
+      name="twitter:description"
+      content="Создайте схему участка, записывайте посадки и наблюдения. Через годы — полная история вашего сада."
+    />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="splash">
+        <img src="/icon-192.png" alt="" width="72" height="72" />
+        <span>уДачный сад</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

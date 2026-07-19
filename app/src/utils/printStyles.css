@@ -1,0 +1,26 @@
+/**
+ * printStyles.css — печать карточки растения (задача 33.2).
+ *
+ * При печати виден только элемент с классом .print-plant-card
+ * (и его содержимое) — весь остальной интерфейс экрана скрыт.
+ * Используется в PlantingDetail.tsx вместе с кнопкой «Распечатать».
+ */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-plant-card,
+  .print-plant-card * {
+    visibility: visible;
+  }
+
+  .print-plant-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 24px;
+  }
+}

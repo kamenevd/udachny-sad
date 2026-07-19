@@ -1,0 +1,81 @@
+/**
+ * Задача G.1 — тема «Солнечная вспышка» (High Contrast Mode).
+ *
+ * Активируется атрибутом [data-hc="true"] на <html> (см. useHighContrast.ts).
+ * Тёмный фон + жёлто-белый текст даёт контраст ≥7:1 (WCAG AAA), шрифты 18-20px,
+ * кнопки/таргеты ≥56px, убраны тени и градиенты (на солнце они «шумят»).
+ *
+ * Переопределяем используемые в проекте tailwind-утилиты цвета (bg-paper,
+ * text-ink и т.д.), а не сами компоненты — так режим покрывает все экраны.
+ */
+
+:root[data-hc="true"] {
+  color-scheme: dark;
+  font-size: 19px; /* базовый апскейл шрифтов 18-20px */
+}
+
+:root[data-hc="true"] body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Убираем тени и градиенты — на ярком свету они мешают */
+:root[data-hc="true"] * {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  background-image: none !important;
+}
+
+/* Фоны */
+:root[data-hc="true"] .bg-paper,
+:root[data-hc="true"] .bg-surface,
+:root[data-hc="true"] .bg-white {
+  background-color: #000000 !important;
+}
+
+/* Текст — белый; приглушённый становится светло-серым (контраст ≥7:1) */
+:root[data-hc="true"] .text-ink,
+:root[data-hc="true"] .text-white {
+  color: #ffffff !important;
+}
+:root[data-hc="true"] .text-ink-muted {
+  color: #e8e8e8 !important;
+}
+:root[data-hc="true"] .text-blueink {
+  color: #7fd4ff !important;
+}
+:root[data-hc="true"] .text-red,
+:root[data-hc="true"] .bg-red {
+  color: #ffd400 !important;
+}
+:root[data-hc="true"] .bg-red {
+  background-color: #7a1500 !important;
+  color: #ffffff !important;
+}
+
+/* Границы — яркие */
+:root[data-hc="true"] .border-ink,
+:root[data-hc="true"] [class*="border-ink"] {
+  border-color: #ffffff !important;
+}
+
+/* Крупные кнопки и интерактивные элементы (≥56px) */
+:root[data-hc="true"] button,
+:root[data-hc="true"] a[role="button"],
+:root[data-hc="true"] [role="button"],
+:root[data-hc="true"] input:not([type="checkbox"]):not([type="radio"]),
+:root[data-hc="true"] select,
+:root[data-hc="true"] textarea {
+  min-height: 56px;
+  font-size: 18px !important;
+}
+
+:root[data-hc="true"] h1 {
+  color: #ffffff !important;
+}
+
+/* Явный фокус-ринг ярче */
+:root[data-hc="true"] *:focus-visible {
+  outline: 3px solid #ffd400 !important;
+  outline-offset: 2px;
+}

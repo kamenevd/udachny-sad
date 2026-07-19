@@ -1,0 +1,319 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Banner snapshot > вымпел с кастомной подписью и склонением дней 1`] = `
+<DocumentFragment>
+  <style>
+    
+        @keyframes banner-pop {
+          0%   { opacity: 0; transform: rotate(3deg) scale(0.85); }
+          100% { opacity: 1; transform: rotate(3deg) scale(1); }
+        }
+        .banner-pennant {
+          animation: banner-pop 280ms ease-out both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .banner-pennant {
+            animation: none;
+          }
+        }
+      
+  </style>
+  <div
+    class="banner-pennant "
+    style="display: inline-block; transform: rotate(3deg); transform-origin: center center;"
+  >
+    <div
+      style="background: rgb(201, 154, 44); padding: 2px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);"
+    >
+      <div
+        style="background: rgb(191, 46, 36); height: 28px; display: flex; align-items: center; gap: 6px; padding-inline: 12px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);"
+      >
+        <span
+          aria-hidden="true"
+          style="color: rgb(201, 154, 44); font-size: 13px; line-height: 1; flex-shrink: 0;"
+        >
+          ★
+        </span>
+        <span
+          style="font-family: Oswald, system-ui, sans-serif; font-size: 12px; line-height: 1; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: rgb(255, 255, 255);"
+        >
+          СТРИК ПОЛИВА · 21 ДЕНЬ
+        </span>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`Banner snapshot > вымпел со стандартной подписью 1`] = `
+<DocumentFragment>
+  <style>
+    
+        @keyframes banner-pop {
+          0%   { opacity: 0; transform: rotate(3deg) scale(0.85); }
+          100% { opacity: 1; transform: rotate(3deg) scale(1); }
+        }
+        .banner-pennant {
+          animation: banner-pop 280ms ease-out both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .banner-pennant {
+            animation: none;
+          }
+        }
+      
+  </style>
+  <div
+    class="banner-pennant "
+    style="display: inline-block; transform: rotate(3deg); transform-origin: center center;"
+  >
+    <div
+      style="background: rgb(201, 154, 44); padding: 2px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);"
+    >
+      <div
+        style="background: rgb(191, 46, 36); height: 28px; display: flex; align-items: center; gap: 6px; padding-inline: 12px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);"
+      >
+        <span
+          aria-hidden="true"
+          style="color: rgb(201, 154, 44); font-size: 13px; line-height: 1; flex-shrink: 0;"
+        >
+          ★
+        </span>
+        <span
+          style="font-family: Oswald, system-ui, sans-serif; font-size: 12px; line-height: 1; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: rgb(255, 255, 255);"
+        >
+          УДАРНИК УЧЁТА · 5 ДНЕЙ
+        </span>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`PlantCard snapshot > минимальная карточка без данных 1`] = `
+<DocumentFragment>
+  <div
+    class="inline-block rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank"
+  >
+    <div
+      class="rounded-[6px] border border-ink p-4"
+    >
+      <header
+        class="mb-4 border-b border-ink/20 pb-3 text-center"
+      >
+        <h2
+          class="font-poster text-[14px] uppercase tracking-[0.08em] text-ink-muted"
+        >
+          Учётная карточка № 007
+        </h2>
+      </header>
+      <div
+        class="flex flex-col gap-5 sm:flex-row sm:items-start"
+      >
+        <div
+          class="relative shrink-0 overflow-hidden rounded-[6px] border border-dashed border-ink/30 bg-surface"
+          style="width: 120px; aspect-ratio: 3 / 4;"
+        >
+          <div
+            class="flex h-full w-full items-center justify-center p-2 text-center"
+          >
+            <span
+              class="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-muted"
+            >
+              Место для фотокарточки
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`PlantCard snapshot > полная карточка с фото 1`] = `
+<DocumentFragment>
+  <div
+    class="inline-block rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank"
+  >
+    <div
+      class="rounded-[6px] border border-ink p-4"
+    >
+      <header
+        class="mb-4 border-b border-ink/20 pb-3 text-center"
+      >
+        <h2
+          class="font-poster text-[14px] uppercase tracking-[0.08em] text-ink-muted"
+        >
+          Учётная карточка № 042
+        </h2>
+      </header>
+      <div
+        class="flex flex-col gap-5 sm:flex-row sm:items-start"
+      >
+        <dl
+          class="flex flex-1 flex-col gap-3"
+        >
+          <div
+            class="flex flex-col gap-1"
+          >
+            <dt
+              class="text-[13px] font-poster font-semibold uppercase tracking-[0.05em] text-ink-muted"
+            >
+              Тип растения
+            </dt>
+            <dd
+              class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
+            >
+              Плодовое дерево
+            </dd>
+          </div>
+          <div
+            class="flex flex-col gap-1"
+          >
+            <dt
+              class="text-[13px] font-poster font-semibold uppercase tracking-[0.05em] text-ink-muted"
+            >
+              Название
+            </dt>
+            <dd
+              class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
+            >
+              Яблоня × 1
+            </dd>
+          </div>
+          <div
+            class="flex flex-col gap-1"
+          >
+            <dt
+              class="text-[13px] font-poster font-semibold uppercase tracking-[0.05em] text-ink-muted"
+            >
+              Сорт
+            </dt>
+            <dd
+              class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
+            >
+              Антоновка
+            </dd>
+          </div>
+          <div
+            class="flex flex-col gap-1"
+          >
+            <dt
+              class="text-[13px] font-poster font-semibold uppercase tracking-[0.05em] text-ink-muted"
+            >
+              Дата посадки
+            </dt>
+            <dd
+              class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
+            >
+              12.04.2024
+            </dd>
+          </div>
+          <div
+            class="flex flex-col gap-1"
+          >
+            <dt
+              class="text-[13px] font-poster font-semibold uppercase tracking-[0.05em] text-ink-muted"
+            >
+              Статус
+            </dt>
+            <dd
+              class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
+            >
+              Растёт
+            </dd>
+          </div>
+          <div
+            class="flex flex-col gap-1"
+          >
+            <dt
+              class="text-[13px] font-poster font-semibold uppercase tracking-[0.05em] text-ink-muted"
+            >
+              Место на участке
+            </dt>
+            <dd
+              class="border-b border-dashed border-ink/30 pb-1 font-mono text-[15px] text-blueink"
+            >
+              Грядка 3 — у забора
+            </dd>
+          </div>
+        </dl>
+        <div
+          class="relative shrink-0 overflow-hidden rounded-[6px] border border-dashed border-ink/30 bg-surface"
+          style="width: 120px; aspect-ratio: 3 / 4;"
+        >
+          <img
+            alt="Фотокарточка растения № 042"
+            class="h-full w-full object-cover"
+            decoding="async"
+            loading="lazy"
+            src="https://example.com/photo.jpg"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;
+
+exports[`Stamp snapshot > оттиск с действием ПОСАЖЕНО 1`] = `
+<DocumentFragment>
+  <svg
+    aria-label="Печать: ПОСАЖЕНО"
+    class=""
+    height="110"
+    role="img"
+    style="color: rgb(191, 46, 36); transform: rotate(-8deg) scale(1.2); transform-origin: 55px 55px; transition: none;"
+    viewBox="0 0 110 110"
+    width="110"
+  >
+    <defs>
+      <path
+        d="M 7 55 A 48 48 0 0 1 103 55"
+        fill="none"
+        id="stamp-text-arc"
+      />
+    </defs>
+    <circle
+      cx="55"
+      cy="55"
+      fill="none"
+      r="52"
+      stroke="currentColor"
+      stroke-width="3"
+    />
+    <circle
+      cx="55"
+      cy="55"
+      fill="none"
+      r="44"
+      stroke="currentColor"
+      stroke-width="1.5"
+    />
+    <text
+      class="font-poster"
+      fill="currentColor"
+      style="font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-size: 8px; font-weight: 600;"
+    >
+      <textpath
+        href="#stamp-text-arc"
+        startOffset="50%"
+        text-anchor="middle"
+      >
+        УДАЧНЫЙ САД · ЖУРНАЛ УЧЁТА САДОВОДА
+      </textpath>
+    </text>
+    <text
+      class="font-poster"
+      dominant-baseline="central"
+      fill="currentColor"
+      style="font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; font-weight: 700;"
+      text-anchor="middle"
+      x="55"
+      y="55"
+    >
+      ПОСАЖЕНО ★
+    </text>
+  </svg>
+</DocumentFragment>
+`;

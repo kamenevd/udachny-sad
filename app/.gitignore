@@ -4,3 +4,6 @@ dist
 .env.local
 .convex
 *.log
+*.rootowned*
+test-results
+playwright-report

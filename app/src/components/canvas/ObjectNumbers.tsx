@@ -18,6 +18,7 @@
  * последним в дереве Konva).
  */
 
+import { memo } from 'react';
 import { Group, Circle, Text } from 'react-konva';
 import { canvasColors } from '../../theme/canvasColors';
 import { groupKey } from './useExplicationData';
@@ -129,6 +130,53 @@ function computeGroups(
 
 // ─── Компонент ──────────────────────────────────────────────────────
 
+
+interface NumberGroupViewProps {
+  number: number;
+  x: number;
+  y: number;
+  selected: boolean;
+}
+
+const NumberGroupView = memo(function NumberGroupView({ number, x, y, selected }: NumberGroupViewProps) {
+  return (
+    <Group key={number} x={x} y={y}>
+      <Circle
+        radius={NUMBER_RADIUS}
+        fill={canvasColors.paper}
+        stroke={canvasColors.ink}
+        strokeWidth={NUMBER_STROKE_WIDTH}
+        perfectDrawEnabled={false}
+      />
+      <Text
+        text={String(number)}
+        x={-NUMBER_RADIUS}
+        y={-NUMBER_RADIUS}
+        width={NUMBER_RADIUS * 2}
+        height={NUMBER_RADIUS * 2}
+        align="center"
+        verticalAlign="middle"
+        fontFamily="'PT Mono', 'JetBrains Mono', monospace"
+        fontSize={FONT_SIZE}
+        fontStyle="700"
+        lineHeight={1}
+        fill={canvasColors.ink}
+      />
+      {selected && (
+        <Circle
+          radius={RING_RADIUS}
+          stroke={canvasColors.red}
+          strokeWidth={RING_STROKE_WIDTH}
+          perfectDrawEnabled={false}
+        />
+      )}
+    </Group>
+  );
+}, (prev, next) => {
+  return prev.number === next.number && prev.x === next.x && prev.y === next.y && prev.selected === next.selected;
+});
+
+
 export function ObjectNumbers({
   objects,
   groupMap,
@@ -138,47 +186,15 @@ export function ObjectNumbers({
 
   return (
     <Group listening={false}>
-      {groups.map((group) => {
-        const isSelected = selectedNumber === group.number;
-        return (
-          <Group key={group.number} x={group.centroid.x} y={group.centroid.y}>
-            {/* Кружок номера: ⌀20 paper, рамка ink 1.5px */}
-            <Circle
-              radius={NUMBER_RADIUS}
-              fill={canvasColors.paper}
-              stroke={canvasColors.ink}
-              strokeWidth={NUMBER_STROKE_WIDTH}
-              perfectDrawEnabled={false}
-            />
-
-            {/* Номер: PT Mono 11/700, центрирован в кружке */}
-            <Text
-              text={String(group.number)}
-              x={-NUMBER_RADIUS}
-              y={-NUMBER_RADIUS}
-              width={NUMBER_RADIUS * 2}
-              height={NUMBER_RADIUS * 2}
-              align="center"
-              verticalAlign="middle"
-              fontFamily="'PT Mono', 'JetBrains Mono', monospace"
-              fontSize={FONT_SIZE}
-              fontStyle="700"
-              lineHeight={1}
-              fill={canvasColors.ink}
-            />
-
-            {/* Кольцо выделения: red 4px, поверх номера */}
-            {isSelected && (
-              <Circle
-                radius={RING_RADIUS}
-                stroke={canvasColors.red}
-                strokeWidth={RING_STROKE_WIDTH}
-                perfectDrawEnabled={false}
-              />
-            )}
-          </Group>
-        );
-      })}
+      {groups.map((group) => (
+        <NumberGroupView
+          key={group.number}
+          number={group.number}
+          x={group.centroid.x}
+          y={group.centroid.y}
+          selected={selectedNumber === group.number}
+        />
+      ))}
     </Group>
   );
 }

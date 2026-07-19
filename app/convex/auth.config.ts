@@ -1,10 +1,13 @@
-import { convexAuth } from "@convex-dev/auth/server";
-import { Password } from "@convex-dev/auth/providers/Password";
-import { Google } from "@convex-dev/auth/providers/Google";
-
-export const { auth, signIn, signOut, isAuthenticated } = convexAuth({
+/**
+ * Конфигурация auth-провайдеров деплоя Convex.
+ * Формат Convex Auth: сам деплой выступает OIDC-провайдером.
+ * CONVEX_SITE_URL подставляется окружением деплоя автоматически.
+ */
+export default {
   providers: [
-    Password({ redirectTo: "/" }),
-    Google({ redirectTo: "/" }),
+    {
+      domain: process.env.CONVEX_SITE_URL,
+      applicationID: "convex",
+    },
   ],
-});
+};

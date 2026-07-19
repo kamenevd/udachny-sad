@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import { memo, type CSSProperties } from 'react';
 
 export interface PlantCardProps {
   cardNumber: number;
@@ -32,7 +32,7 @@ const FIELD_LABELS: Record<keyof Omit<PlantCardProps, 'cardNumber' | 'photoUrl' 
   positionNote: 'Место на участке',
 };
 
-export function PlantCard({
+function PlantCardInner({
   cardNumber,
   type,
   name,
@@ -100,6 +100,7 @@ export function PlantCard({
                 alt={`Фотокарточка растения № ${formattedNumber}`}
                 className="h-full w-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center p-2 text-center">
@@ -114,5 +115,7 @@ export function PlantCard({
     </div>
   );
 }
+export const PlantCard = memo(PlantCardInner);
+
 
 export default PlantCard;

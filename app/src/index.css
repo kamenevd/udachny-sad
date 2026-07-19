@@ -12,3 +12,79 @@
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
+
+
+/* ── Reduced motion (задача 19.3) ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Skip-to-content (задача 19.1) ── */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  z-index: 100;
+  padding: 12px 20px;
+  background: #202A38;
+  color: #F7EFD9;
+  font-family: 'PT Mono', monospace;
+  font-size: 15px;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+
+/* ── Focus visible (задача 26.2) — чёткий ring для клавиатурной навигации ── */
+*:focus-visible {
+  outline: 3px solid #2E6FA3;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Убираем default outline только для mouse-фокуса */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Focus ring для кнопок с тонкими стилями */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid #2E6FA3;
+  outline-offset: 2px;
+}
+
+/* ── Touch-targets ≥48×48px (задача G.3, WCAG 2.5.5) ──
+   Только на сенсорных устройствах (pointer: coarse) — на десктопе с мышью
+   мелкие кнопки допустимы и не ломают плотную вёрстку. Чекбоксы/радио и
+   элементы, явно помеченные .touch-exempt, не трогаем. */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  [role="button"],
+  a[href],
+  label[role="button"],
+  select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    min-height: 48px;
+  }
+
+  button:not(.touch-exempt),
+  [role="button"]:not(.touch-exempt) {
+    min-width: 48px;
+  }
+}

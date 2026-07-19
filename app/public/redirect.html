@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Вход… — уДачный сад</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#faf6ee; margin:0; padding:40px 20px; text-align:center; color:#2c2520; }
+    .card { max-width:400px; margin:0 auto; padding:32px 24px; }
+    .icon { font-size:48px; margin-bottom:16px; }
+    h1 { font-size:20px; font-weight:600; margin:0 0 8px; }
+    p { color:#6b5d4f; font-size:14px; line-height:1.5; margin:0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🌾</div>
+    <h1>Обработка входа…</h1>
+    <p id="status">Закрываем окно…</p>
+  </div>
+  <noscript>Для входа через Яндекс нужен включённый JavaScript.</noscript>
+  <script>
+    // OAuth2 redirect page для PocketBase JS SDK popup flow.
+    // SDK открывает popup, попадает сюда с ?code=...&state=...,
+    // мы отправляем эти данные в родительское окно (opener) через postMessage,
+    // затем закрываем popup.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var state = params.get("state");
+      var code = params.get("code");
+      if (window.opener && window.opener !== window) {
+        // PocketBase JS SDK слушает postMessage от popup с JSON {state, code}
+        window.opener.postMessage(JSON.stringify({ state: state, code: code }), "*");
+        document.getElementById("status").textContent = "Готово, закрываем…";
+        setTimeout(function () { window.close(); }, 400);
+      } else {
+        // Если popup был заблокирован и мы в основном окне —
+        // PocketBase redirect-flow: передаём code через hash или query обратно
+        document.getElementById("status").textContent =
+          "Возвращаемся в приложение…";
+        // Запасной редирект на главную с параметрами
+        setTimeout(function () {
+          window.location.href = "/?yandex_auth=1&" + params.toString();
+        }, 800);
+      }
+    })();
+  </script>
+</body>
+</html>

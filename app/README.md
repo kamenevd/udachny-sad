@@ -1,6 +1,9 @@
 # уДачный сад 🌱
 
-Веб-сервис для дачников: схема участка, посадки, журнал событий, история.
+Веб-PWA для дачников: интерактивная схема участка, посадки, журнал событий,
+история мест, фотофиксация. Бумажный дизайн, оффлайн-режим.
+
+> Создано для семьи Каменевых 🏡
 
 ## Стек
 
@@ -8,10 +11,30 @@
 |---|---|
 | Frontend | Vite + React 19 + TypeScript (strict) |
 | Стили | Tailwind CSS |
-| PWA | vite-plugin-pwa |
+| PWA | vite-plugin-pwa (StaleWhileRevalidate + CacheFirst) |
 | Backend | Convex (queries/mutations, File Storage) |
 | Auth | Convex Auth (magic link + Google OAuth) |
-| Схема участка | Konva.js + react-konva (установлено, не используется) |
+| Схема участка | Konva.js + react-konva (pan/zoom, рисование объектов, зоны освещённости) |
+| Тесты | Vitest + @testing-library/react |
+
+## Возможности
+
+- 🗺️ **Интерактивная схема участка** — рисование грядок, зон, объектов с pan/zoom
+- 🌱 **Каталог растений** — справочник по типам (деревья, кустарники, многолетники…)
+- 📋 **Посадки** — размещение растений на схеме, статусы, история
+- 📔 **Журнал событий** — 12 типов (полив, урожай, болезнь, обрезка…), фото
+- 📸 **Фотогалерея** — загрузка с камеры или галереи, штамп даты, lazy-loading изображений
+- 📍 **История мест** — что росло на этом месте раньше (севооборот)
+- 🔔 **Toast-уведомления** + **OfflineBanner** при потере связи
+- 📴 **Оффлайн** — Service Worker кэширует API и изображения, offline.html-фолбэк,
+  фоновая синхронизация отложенных мутаций (useQueuedMutation)
+- 📱 **PWA** — устанавливается на домашний экран, app shortcuts (deep link
+  `?screen=plants`), haptic feedback
+- ♿ **A11y** — skip-to-content, focus trap в модалах, focus-visible ring,
+  prefers-reduced-motion, live regions (toast/loading), role=alert
+- 🌍 **i18n-подготовка** — все строки вынесены в `src/i18n/ru.ts` через `t()`
+- ⚡ **Производительность** — lazy-loading экранов (React.lazy/Suspense),
+  lazy-loading изображений
 
 ## Запуск локально
 
@@ -30,16 +53,53 @@ cp .env.example .env.local
 npm run dev
 ```
 
-## Деплой на Vercel
+## Тесты
 
 ```bash
-# 1. Задеплоить Convex-бэкенд
-npx convex deploy
+# Запустить все тесты
+npx vitest run
 
-# 2. Собрать фронтенд
+# С покрытием
+npx vitest run --coverage
+
+# Watch-режим
+npx vitest
+
+# E2E (Playwright)
+npm run test:e2e
+```
+
+126 unit/integration-тестов (17 файлов): компоненты, хуки, скелетоны, формы,
+оффлайн, модалы, snapshot-тесты, edge cases, integration-flow. Плюс e2e на
+Playwright (auth, навигация, участки). Подробности — в [TESTING.md](../TESTING.md).
+
+## Сборка
+
+```bash
+# Проверка типов
+npx tsc --noEmit
+
+# Production-сборка
 npm run build
 
-# 3. Задеплоить на Vercel
+# Превью сборки
+npm run preview
+```
+
+## Деплой
+
+Подробная инструкция — в [DEPLOYMENT.md](../DEPLOYMENT.md).
+
+### Convex-бэкенд
+
+```bash
+npx convex deploy
+```
+
+### Фронтенд (Vercel)
+
+```bash
+npm run build
 npx vercel --prod
 ```
 
@@ -47,45 +107,51 @@ npx vercel --prod
 
 | Переменная | Описание |
 |---|---|
-| `VITE_CONVEX_URL` | URL Convex-деплоя (из `npx convex deploy`) |
-| `VITE_CONVEX_AUTH_google_CLIENT_ID` | Google OAuth Client ID |
-| `CONVEX_DEPLOY_KEY` | Deploy key Convex (для CI/CD) |
+| VITE_CONVEX_URL | URL Convex-деплоя (из npx convex deploy) |
+| VITE_CONVEX_AUTH_google_CLIENT_ID | Google OAuth Client ID |
+| CONVEX_DEPLOY_KEY | Deploy key Convex (для CI/CD) |
 
 ## Структура проекта
 
 ```
-udachny-sad/
-├── convex/              # Convex backend
-│   ├── schema.ts        # Схема данных (9 таблиц)
-│   ├── gardens.ts       # Queries: listMine, getById
-│   ├── gardensMutations.ts  # Mutations: create, remove
-│   ├── http.ts          # HTTP endpoint для Convex Auth
-│   └── _generated/      # Автогенерируемые типы
+app/
+├── convex/                 # Convex backend
+│   ├── schema.ts           # Схема данных (9 таблиц)
+│   ├── gardens.ts          # Gardens: listMine, getById
+│   ├── plantings.ts        # Plantings: create, update, listByGarden
+│   ├── journalEvents.ts    # Journal: create, update, listByPlanting
+│   ├── plants.ts           # Plants: listMine, create
+│   ├── schemaObjects.ts    # Schema objects: create, update
+│   ├── zones.ts            # Light/moisture zones
+│   ├── photos.ts           # File storage: upload, list, remove
+│   ├── stats.ts            # Aggregated stats
+│   ├── users.ts            # User profile
+│   ├── auth.ts             # Convex Auth config
+│   └── http.ts             # HTTP endpoint для Auth
 ├── src/
-│   ├── components/      # Button, Input, Modal
-│   ├── screens/         # Login, Gardens, GardenDetail
-│   ├── lib/             # Утилиты
-│   ├── hooks/           # React-хуки
-│   ├── auth.ts          # Convex Auth конфигурация
-│   ├── App.tsx          # Корневой компонент, маршрутизация
-│   ├── main.tsx         # Точка входа
-│   └── index.css        # Tailwind + глобальные стили
-├── public/              # Статика, иконки PWA
-├── index.html
+│   ├── components/         # Button, Input, Modal, Toast, Skeleton…
+│   │   └── canvas/         # Konva: EditorToolbar, zones, markers
+│   ├── screens/            # Login, Gardens, GardenDetail, Plants, PlantingDetail
+│   ├── hooks/              # useSafeMutation, usePullToRefresh
+│   ├── theme/              # canvasColors, canvasPatterns, sky
+│   ├── __tests__/          # Vitest-тесты
+│   ├── main.tsx            # Точка входа
+│   └── index.css           # Tailwind + globals
+├── public/                 # Статика, иконки PWA
 ├── vite.config.ts
+├── vitest.config.ts
 ├── tailwind.config.js
-├── tsconfig.json
 └── package.json
 ```
-
-## PWA
-
-Манифест настроен: название «уДачный сад», тема #22c55e (зелёный).
-Иконки-заглушки: `public/icon-192.png`, `public/icon-512.png` (заменить на реальные).
-Service Worker регистрируется автоматически (vite-plugin-pwa).
 
 ## Схема данных
 
 Полная схема — в [ARCHITECTURE.md](../ARCHITECTURE.md).
 
-9 таблиц Convex: `users`, `gardens`, `schemaObjects`, `lightZones`, `moistureZones`, `plants`, `plantings`, `journalEvents`, `photos`.
+9 таблиц Convex: users, gardens, schemaObjects, lightZones, moistureZones,
+plants, plantings, journalEvents, photos.
+
+## Дизайн
+
+Бумажный стиль (DESIGN.md v5.1): двойные рамки, тени-blank, шрифты font-poster +
+font-mono. Цвета: ink (#202836), paper (#FAF6E9), surface, red, blueink.

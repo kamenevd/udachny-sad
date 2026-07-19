@@ -1,5 +1,7 @@
 import { query, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { getOrCreateUser, getUserId, requireGarden } from "./users";
 
 // ─── Queries ──────────────────────────────────────────────
 
@@ -7,20 +9,12 @@ import { v } from "convex/values";
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    // Находим user record по email
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) return [];
+    const userId = await getUserId(ctx);
+    if (!userId) return [];
 
     return await ctx.db
       .query("gardens")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .order("desc")
       .collect();
   },
@@ -30,18 +24,11 @@ export const listMine = query({
 export const getById = query({
   args: { gardenId: v.id("gardens") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
+    const userId = await getUserId(ctx);
+    if (!userId) return null;
 
     const garden = await ctx.db.get(args.gardenId);
-    if (!garden) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user || garden.ownerId !== user._id) return null;
+    if (!garden || garden.ownerId !== userId) return null;
 
     return garden;
   },
@@ -51,13 +38,10 @@ export const getById = query({
 
 /**
  * Создать участок.
- * Проверяет владельца через ctx.auth.getUserIdentity().
  * MVP: один участок на пользователя — если уже есть, выбрасывает ошибку.
  *
  * Если переданы width/length — генерируется прямоугольный boundary.
  * Если нет — boundary останется пустым (свободное рисование через Konva).
- *
- * User record создаётся автоматически (upsert), если не найден.
  */
 export const create = mutation({
   args: {
@@ -67,34 +51,12 @@ export const create = mutation({
     length: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Необходима авторизация");
-    }
-
-    // Находим или создаём user record (upsert)
-    let user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      const now = Date.now();
-      const userId = await ctx.db.insert("users", {
-        name: identity.name ?? "Пользователь",
-        email: identity.email!,
-        role: "owner",
-        locale: "ru",
-        createdAt: now,
-        updatedAt: now,
-      });
-      user = await ctx.db.get(userId);
-    }
+    const userId = await getOrCreateUser(ctx);
 
     // MVP-ограничение: один участок на пользователя
     const existing = await ctx.db
       .query("gardens")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user!._id))
+      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .first();
 
     if (existing) {
@@ -117,7 +79,7 @@ export const create = mutation({
         : undefined;
 
     const gardenId = await ctx.db.insert("gardens", {
-      ownerId: user!._id,
+      ownerId: userId,
       name: args.name,
       description: args.description,
       boundary,
@@ -129,35 +91,76 @@ export const create = mutation({
   },
 });
 
+/** Удалить все фото сущности (запись + файл из File Storage, §3.4 ARCHITECTURE) */
+export async function deletePhotosFor(
+  ctx: MutationCtx,
+  ownerType: string,
+  ownerId: string,
+) {
+  const photos = await ctx.db
+    .query("photos")
+    .withIndex("by_owner", (q) =>
+      q.eq("ownerType", ownerType).eq("ownerId", ownerId),
+    )
+    .collect();
+
+  for (const photo of photos) {
+    await ctx.storage.delete(photo.storageId);
+    await ctx.db.delete(photo._id);
+  }
+}
+
 /**
  * Удалить участок.
- * Проверяет владельца: garden.ownerId должен совпадать с текущим пользователем.
- * Каскадное удаление всех дочерних объектов (MVP: только участок).
+ * Каскад (§3.4 ARCHITECTURE): объекты схемы, зоны обоих слоёв, посадки,
+ * события журнала и все фото (включая файлы в File Storage).
  */
 export const remove = mutation({
   args: { gardenId: v.id("gardens") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Необходима авторизация");
+    const userId = await getOrCreateUser(ctx);
+    await requireGarden(ctx, args.gardenId, userId);
+
+    // 1. Объекты схемы + их фото
+    const objects = await ctx.db
+      .query("schemaObjects")
+      .withIndex("by_garden", (q) => q.eq("gardenId", args.gardenId))
+      .collect();
+    for (const obj of objects) {
+      await deletePhotosFor(ctx, "schemaObject", obj._id);
+      await ctx.db.delete(obj._id);
     }
 
-    const garden = await ctx.db.get(args.gardenId);
-    if (!garden) {
-      throw new Error("Участок не найден");
+    // 2. Зоны условий (оба слоя)
+    for (const table of ["lightZones", "moistureZones"] as const) {
+      const zones = await ctx.db
+        .query(table)
+        .withIndex("by_garden", (q) => q.eq("gardenId", args.gardenId))
+        .collect();
+      for (const zone of zones) {
+        await ctx.db.delete(zone._id);
+      }
     }
 
-    // Проверка владельца
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user || garden.ownerId !== user._id) {
-      throw new Error("Нет прав на удаление этого участка");
+    // 3. Посадки + их события журнала + фото
+    const plantings = await ctx.db
+      .query("plantings")
+      .withIndex("by_garden", (q) => q.eq("gardenId", args.gardenId))
+      .collect();
+    for (const planting of plantings) {
+      const events = await ctx.db
+        .query("journalEvents")
+        .withIndex("by_planting", (q) => q.eq("plantingId", planting._id))
+        .collect();
+      for (const event of events) {
+        await deletePhotosFor(ctx, "journalEvent", event._id);
+        await ctx.db.delete(event._id);
+      }
+      await deletePhotosFor(ctx, "planting", planting._id);
+      await ctx.db.delete(planting._id);
     }
 
-    // TODO: каскадное удаление schemaObjects, zones, plantings, journalEvents, photos
+    // 4. Сам участок
     await ctx.db.delete(args.gardenId);
     return null;
   },

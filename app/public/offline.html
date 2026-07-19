@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>уДачный сад — офлайн</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'PT Mono', 'Courier New', monospace;
+      background: #F7EFD9;
+      color: #202A38;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 400px;
+      text-align: center;
+      border: 2px solid #202A38;
+      border-radius: 10px;
+      background: #FFFEFB;
+      padding: 40px 30px;
+      box-shadow: 4px 4px 0 #202A38;
+    }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 12px;
+    }
+    p { font-size: 16px; line-height: 1.5; color: #5A6978; margin-bottom: 24px; }
+    button {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      font-size: 15px;
+      text-transform: uppercase;
+      padding: 12px 24px;
+      background: #202A38;
+      color: #F7EFD9;
+      border: 2px solid #202A38;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { background: #2E6FA3; border-color: #2E6FA3; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🌱</div>
+    <h1>Нет связи с садом</h1>
+    <p>Похоже, вы офлайн. Проверьте интернет-соединение и попробуйте снова.</p>
+    <button onclick="window.location.reload()">Попробовать снова</button>
+  </div>
+</body>
+</html>

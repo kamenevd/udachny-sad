@@ -10,6 +10,7 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -22,5 +23,5 @@
     }
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "**/*.rootowned"]
 }

@@ -891,4 +891,95 @@ users (1) ──────────────── (∞) gardens
 
 ---
 
-*Документ: ARCHITECTURE.md · Версия: 1.0 · Стек: Convex · Дата: 2026-07-16*
+
+---
+
+## 7. Frontend-архитектура
+
+### 7.1. Дерево компонентов
+
+```
+<App>
+├── <ToastProvider>                    // Глобальные уведомления
+│   ├── <ConvexProvider>               // React-коннектор к Convex
+│   │   ├── <AuthProvider>             // @convex-dev/auth
+│   │   │   └── <Router>               // Простой state-based роутер
+│   │   │       ├── <Login />          // Экран авторизации
+│   │   │       ├── <Gardens />        // Список участков
+│   │   │       ├── <GardenDetail />   // Канва + объекты + посадки
+│   │   │       ├── <PlantingDetail /> // Карточка посадки + журнал
+│   │   │       ├── <Plants />         // Справочник растений
+│   │   │       └── <PlaceHistory />   // Архивная справка места
+│   │   │
+│   │   ├── <ErrorBoundary />          // Глобальный error catcher
+│   │   ├── <OfflineBanner />          // Индикатор сети
+│   │   └── <InstallPrompt />          // PWA install banner
+```
+
+### 7.2. Data flow
+
+```
+Convex (server)
+    ↕ WebSocket (реактивный)
+useQuery(api.domain.fn)        → данные (auto re-fetch)
+useMutation(api.domain.fn)     → запись (optimistic UI via Convex)
+    ↓
+useSafeMutation (wrapper)      → авто toast при ошибке + haptic
+    ↓
+React state (useState)         → локальный UI state
+    ↓
+Render (React 19)
+```
+
+**Ключевой инвариант:** данные — из Convex (server truth). Локальный state — только UI (модалки, формы, filters).
+
+### 7.3. Канва (Konva)
+
+```
+<GardenDetail>
+├── <Stage> (react-konva)
+│   ├── <Layer> — зоны (lightZones + moistureZones)
+│   │   └── <ZonesLayer />
+│   ├── <Layer> — объекты схемы (дом, грядка, дерево…)
+│   │   ├── <SchemaObjects />
+│   │   └── <ObjectNumbers />
+│   ├── <Layer> — посадки (маркеры)
+│   │   └── <PlantingMarkers />
+│   └── <Layer> — атрибуты генплана
+│       └── <GenplanAttributes />
+├── <EditorToolbar />           // Режимы: select, draw, zone…
+├── <ObjectSheet />             // Bottom sheet свойств объекта
+└── <Explication />             // Таблица объектов
+```
+
+**Хуки канвы:**
+- `usePanZoom` — pan/zoom (touch + wheel)
+- `useDrawObject` — рисование объекта мышью/пальцем
+- `useDrawZone` — рисование зоны
+- `useExplicationData` — данные для таблицы
+
+### 7.4. PWA архитектура
+
+```
+vite-plugin-pwa (Workbox)
+├── Precache: 62 entries (HTML, CSS, JS, fonts, icons)
+├── Runtime caching:
+│   ├── Convex API → StaleWhileRevalidate (24h)
+│   ├── Images → CacheFirst (30 days, 60 entries)
+│   └── Google Fonts → CacheFirst (1 year)
+└── Service Worker: autoUpdate
+```
+
+### 7.5. Тестовая архитектура
+
+| Уровень | Инструмент | Файлов | Тестов | Покрытие |
+|---|---|---|---|---|
+| Unit | Vitest + RTL | 12 | 97 | hooks, utils, schema |
+| E2E | Playwright | 3 | 10 | auth, gardens, navigation |
+
+**E2E мок-стратегия:** `convex/react` и `@convex-dev/auth/react` подменяются in-memory store через Vite aliases (mode=e2e). Тесты не требуют живого Convex.
+
+---
+
+*Обновлено: 2026-07-18 · Добавлены §7 (Frontend архитектура)*
+
