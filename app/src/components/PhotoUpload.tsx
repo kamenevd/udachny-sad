@@ -204,7 +204,7 @@ export function PhotoUpload({
       >
         <Input
           label="Что на фото? (необязательно)"
-          placeholder="Например: огурцы зацвели"
+          placeholder="Например: розы зацвели"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           disabled={uploading}

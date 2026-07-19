@@ -215,7 +215,7 @@ export function PlantingForm({
               </div>
               <Input
                 label="Название"
-                placeholder="Томат"
+                placeholder="Роза"
                 value={newPlantName}
                 onChange={(e) => {
                   setNewPlantName(e.target.value);
@@ -224,7 +224,7 @@ export function PlantingForm({
               />
               <Input
                 label="Сорт (необязательно)"
-                placeholder="Бычье сердце"
+                placeholder="Фламментанц"
                 value={newPlantVariety}
                 onChange={(e) => {
                   setNewPlantVariety(e.target.value);

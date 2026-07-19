@@ -150,7 +150,7 @@ export function Plants({ onBack }: PlantsProps) {
               Каждому растению — карточку!
             </p>
             <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
-              Заведите первое растение — яблоню, смородину или флоксы
+              Заведите первое растение — розу, гортензию или флоксы
             </p>
             <Button
               variant="primary"
@@ -165,7 +165,7 @@ export function Plants({ onBack }: PlantsProps) {
             {plants.length > 3 && (
               <Input
                 label="Поиск"
-                placeholder="Яблоня, смородина, флоксы…"
+                placeholder="Роза, гортензия, флоксы…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Поиск по растениям"
@@ -243,7 +243,7 @@ export function Plants({ onBack }: PlantsProps) {
           </div>
           <Input
             label="Название"
-            placeholder="Яблоня"
+            placeholder="Гортензия"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
