@@ -12,6 +12,10 @@ export interface RegistryItem {
   number: number;
   title: string;
   meta?: string; // дата, статус и т.д.
+  /** Короткая плашка перед метаданными, напр. «🌸 Цветёт» (PLAN12 задача 5) */
+  badge?: string;
+  /** Цветная метка слева от названия — основной цвет цветения (PLAN12 задача 5) */
+  accentColor?: string;
 }
 
 interface RegistryProps {
@@ -58,10 +62,26 @@ export function Registry({ sectionTitle, items, onSelect, className = '' }: Regi
                   {String(item.number).padStart(2, '0')}
                 </span>
 
+                {/* Цвет цветения — кружок-образец */}
+                {item.accentColor && (
+                  <span
+                    aria-hidden="true"
+                    className="h-3 w-3 shrink-0 rounded-full border border-ink"
+                    style={{ backgroundColor: item.accentColor }}
+                  />
+                )}
+
                 {/* Название — системный шрифт (§4: Oswald только для H1-H2/кнопок/вкладок/лозунгов) */}
                 <span className="text-[15px] font-medium text-ink truncate flex-1">
                   {item.title}
                 </span>
+
+                {/* Плашка состояния (напр. цветение в выбранном месяце) */}
+                {item.badge && (
+                  <span className="shrink-0 rounded-[4px] border border-ink bg-paper px-1.5 py-0.5 font-mono text-[11px] text-ink">
+                    {item.badge}
+                  </span>
+                )}
 
                 {/* Метаданные (дата, статус) */}
                 {item.meta && (

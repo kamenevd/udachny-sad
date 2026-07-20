@@ -21,6 +21,7 @@ import { CachedZonesLayer as ZonesLayer } from './ZonesLayer';
 import type { ZoneLayerKind } from './zoneConditions';
 import type { StagePanZoomProps } from './usePanZoom';
 import type { DrawGeometryKind } from './useDrawObject';
+import type { ObjectBloomState } from './bloomOverlay';
 
 /** Фон за рамкой листа (DESIGN.md §3.1) */
 const BG_OUTSIDE_SHEET = '#EFE5C9';
@@ -104,6 +105,10 @@ export interface GardenCanvasStageProps {
   activePlantings: PlantingMarkerData[];
   onPlantingMarkerTap: (objectId: string) => void;
   showAttributes: boolean;
+  /** PLAN12 задача 6: выбранный месяц сезонности; null — обычный режим */
+  bloomMonth?: number | null;
+  /** Состояние цветения по id объекта (computeBloomStates) */
+  bloomStates?: Map<string, ObjectBloomState>;
 }
 
 const GardenCanvasStage = forwardRef<Konva.Stage, GardenCanvasStageProps>(function GardenCanvasStage({
@@ -138,6 +143,8 @@ const GardenCanvasStage = forwardRef<Konva.Stage, GardenCanvasStageProps>(functi
   activePlantings,
   onPlantingMarkerTap,
   showAttributes,
+  bloomMonth = null,
+  bloomStates,
 }, ref) {
   return (
     <Stage
@@ -245,6 +252,8 @@ const GardenCanvasStage = forwardRef<Konva.Stage, GardenCanvasStageProps>(functi
             individuallySelected={selectedObjectId === obj.id}
             onSelect={() => onSelectObject(obj.id)}
             onMove={(dxM, dyM) => handleObjectMove(obj, dxM, dyM)}
+            bloomMonth={bloomMonth}
+            bloom={bloomStates?.get(obj.id)}
           />
         ))}
 
@@ -352,6 +361,9 @@ interface ObjectShapeProps {
   individuallySelected: boolean;
   onSelect: () => void;
   onMove: (dxM: number, dyM: number) => void;
+  /** PLAN12 задача 6: месяц сезонности (null — режим выключен) */
+  bloomMonth?: number | null;
+  bloom?: ObjectBloomState;
 }
 
 function ObjectShape({
@@ -364,10 +376,20 @@ function ObjectShape({
   interactive,
   individuallySelected,
   onSelect,
-  onMove
+  onMove,
+  bloomMonth = null,
+  bloom,
 }: ObjectShapeProps) {
   const geom = obj.geometry;
   const isPointType = obj.type === 'tree' || obj.type === 'shrub' || obj.type === 'gate';
+
+  // Режим сезонности: цветущие объекты остаются яркими и получают заливку
+  // цветом растения, остальные приглушаются — «что цветёт в этом месяце»
+  // читается с одного взгляда (задача 6).
+  const seasonMode = bloomMonth !== null;
+  const isBlooming = seasonMode && (bloom?.blooming ?? false);
+  const seasonOpacity = seasonMode && !isBlooming ? 0.3 : 1;
+  const bloomColor = isBlooming ? bloom?.color : undefined;
 
   // Обработчик тапа/клика
   const handleSelect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -390,6 +412,7 @@ function ObjectShape({
     onTap: handleSelect,
     draggable: interactive && individuallySelected,
     onDragEnd: handleDragEnd,
+    opacity: seasonOpacity,
   };
 
   const isHighlighted = selected || individuallySelected;
@@ -444,6 +467,17 @@ function ObjectShape({
             );
           }}
         />
+        {/* Цвет цветения поверх кроны (задача 6) */}
+        {bloomColor && (
+          <Circle
+            x={px}
+            y={py}
+            radius={rPx}
+            fill={bloomColor}
+            opacity={0.6}
+            listening={false}
+          />
+        )}
         {isHighlighted && (
           <Circle
             x={px}
@@ -533,6 +567,17 @@ function ObjectShape({
             drawWaterPattern(c, minX, minY, w, h);
             c.restore();
           }}
+        />
+      )}
+
+      {/* Цвет цветения поверх фактуры (задача 6) */}
+      {bloomColor && (
+        <Line
+          points={flatPoints}
+          closed
+          fill={bloomColor}
+          opacity={0.55}
+          listening={false}
         />
       )}
 

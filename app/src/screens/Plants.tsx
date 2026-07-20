@@ -15,6 +15,9 @@ import { SkeletonList, LoadingAnnouncer } from '../components/Skeleton';
 import { PullToRefreshIndicator } from '../components/PullToRefreshIndicator';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useToast } from '../components/Toast';
+import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
+import { useBloomingSeasons } from '../hooks/useBloomingSeasons';
+import { MONTHS_RU_IN } from '../types/plant';
 
 // PLAN12 задача 2: к 4 базовым типам добавлены категории справочника —
 // хвойные, розы и луковичные вынесены из «кустарников»/«многолетников»,
@@ -70,18 +73,22 @@ export function Plants({ onBack }: PlantsProps) {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
 
+  // Календарь цветения (PLAN12 задачи 3-5): фильтр «что цветёт в N».
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const { filtered: bloomingFiltered, isBlooming, countByMonth, hasBloomData } =
+    useBloomingSeasons(plants, selectedMonth);
+
   // Секции реестра по типам; нумерация сквозная.
   // useDeferredValue даёт debounce-эффект — поиск не блокирует ввод.
   const sections = useMemo(() => {
-    const list = plants ?? [];
     const q = deferredSearch.trim().toLowerCase();
     const filtered = q
-      ? list.filter(
+      ? bloomingFiltered.filter(
           (p) =>
             p.name.toLowerCase().includes(q) ||
             (p.variety?.toLowerCase().includes(q) ?? false),
         )
-      : list;
+      : bloomingFiltered;
     let n = 0;
     return PLANT_TYPES.map((t) => ({
       ...t,
@@ -92,9 +99,11 @@ export function Plants({ onBack }: PlantsProps) {
           number: ++n,
           title: p.name,
           meta: p.variety,
+          badge: isBlooming(p) ? '🌸 Цветёт' : undefined,
+          accentColor: p.primary_color,
         })),
     })).filter((s) => s.items.length > 0);
-  }, [plants, deferredSearch]);
+  }, [bloomingFiltered, deferredSearch, isBlooming]);
 
   const handleCreate = async () => {
     if (!name.trim()) return setError('Введите название растения');
@@ -168,6 +177,14 @@ export function Plants({ onBack }: PlantsProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
+            {/* Календарь цветения — только когда в справочнике есть сезонность */}
+            {hasBloomData && (
+              <BloomingTimeline
+                selectedMonth={selectedMonth}
+                onSelectMonth={setSelectedMonth}
+                countByMonth={countByMonth}
+              />
+            )}
             {plants.length > 3 && (
               <Input
                 label="Поиск"
@@ -179,12 +196,16 @@ export function Plants({ onBack }: PlantsProps) {
             )}
             {sections.length === 0 ? (
               <div className="mt-12 text-center">
-                <div className="mb-3 text-4xl">🔍</div>
+                <div className="mb-3 text-4xl">{selectedMonth !== null ? '🌙' : '🔍'}</div>
                 <p className="font-poster text-[17px] font-semibold uppercase text-ink-muted">
-                  Ничего не нашлось
+                  {selectedMonth !== null
+                    ? `В ${MONTHS_RU_IN[selectedMonth - 1]} ничего не цветёт`
+                    : 'Ничего не нашлось'}
                 </p>
                 <p className="mt-1 text-[15px] text-ink-muted">
-                  Попробуйте изменить запрос
+                  {selectedMonth !== null
+                    ? 'Выберите другой месяц или сбросьте фильтр'
+                    : 'Попробуйте изменить запрос'}
                 </p>
               </div>
             ) : (

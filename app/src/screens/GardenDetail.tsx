@@ -45,6 +45,9 @@ import { Modal } from '../components/Modal';
 import { SkipLink } from '../components/SkipLink';
 import { ExportPng } from '../components/canvas/ExportPng';
 import { SearchOnCanvas } from '../components/canvas/SearchOnCanvas';
+import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
+import { computeBloomStates } from '../components/canvas/bloomOverlay';
+import { MONTHS_RU_IN } from '../types/plant';
 
 /** Konva (~357KB) грузится лениво — только когда экран реально показывает канву (задача 17.3) */
 const GardenCanvasStage = lazy(() => import('../components/canvas/GardenCanvasStage'));
@@ -283,6 +286,35 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
       unsub?.();
     };
   }, [refetchActivePlantings]);
+
+  // ─── Сезонность на канвасе (PLAN12 задача 6) ──────────────────────
+  // Выбран месяц → цветущие объекты подсвечиваются цветом растения,
+  // остальные приглушаются. null — обычный режим схемы.
+  const [bloomMonth, setBloomMonth] = useState<number | null>(null);
+  const [showBloomPanel, setShowBloomPanel] = useState(false);
+
+  const bloomStates = useMemo(
+    () => computeBloomStates(activePlantings ?? [], bloomMonth),
+    [activePlantings, bloomMonth],
+  );
+
+  // Счётчик по месяцам — сколько посадок участка цветёт в каждом месяце
+  const bloomCountByMonth = useMemo(() => {
+    const counts = new Array<number>(12).fill(0);
+    for (const planting of activePlantings ?? []) {
+      const months = planting.plant?.bloom_months;
+      if (!Array.isArray(months)) continue;
+      for (const month of new Set(months)) {
+        if (typeof month === 'number' && month >= 1 && month <= 12) counts[month - 1] += 1;
+      }
+    }
+    return counts;
+  }, [activePlantings]);
+
+  const bloomingNowCount = useMemo(
+    () => [...bloomStates.values()].filter((s) => s.blooming).length,
+    [bloomStates],
+  );
 
   const [plantingListObjectId, setPlantingListObjectId] = useState<string | null>(null);
 
@@ -561,6 +593,42 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
           <CommandPalette items={searchItems} onSelect={handlePaletteSelect} />
         )}
 
+        {/* Сезонность: кнопка + выпадающий календарь (PLAN12 задача 6) */}
+        {editorMode === 'view' && (
+          <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowBloomPanel((v) => !v)}
+              aria-expanded={showBloomPanel}
+              className={[
+                'flex min-h-[44px] items-center gap-1.5 rounded-[8px] border-2 border-ink px-3',
+                'font-poster text-[14px] font-semibold uppercase shadow-blank transition-colors',
+                bloomMonth !== null ? 'bg-ink text-paper' : 'bg-paper text-ink hover:bg-ink/10',
+              ].join(' ')}
+            >
+              <span aria-hidden="true">🌸</span>
+              {bloomMonth !== null ? MONTHS_RU_IN[bloomMonth - 1] : 'Сезон'}
+            </button>
+
+            {showBloomPanel && (
+              <div className="w-[min(92vw,420px)]">
+                <BloomingTimeline
+                  selectedMonth={bloomMonth}
+                  onSelectMonth={setBloomMonth}
+                  countByMonth={bloomCountByMonth}
+                />
+                {bloomMonth !== null && (
+                  <p className="mt-1 rounded-[6px] border-2 border-ink bg-paper px-2 py-1 text-right font-mono text-[12px] text-ink-muted">
+                    {bloomingNowCount > 0
+                      ? `Цветёт мест: ${bloomingNowCount}`
+                      : `В ${MONTHS_RU_IN[bloomMonth - 1]} на участке ничего не цветёт`}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {canvasSize.width > 0 && canvasSize.height > 0 && (
           <Suspense
             fallback={
@@ -606,6 +674,8 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
               activePlantings={(activePlantings ?? []).map((p) => ({ _id: p.id, schemaObjectId: p.schemaObjectId }))}
               onPlantingMarkerTap={(objectId) => setPlantingListObjectId(objectId)}
               showAttributes={showAttributes}
+              bloomMonth={bloomMonth}
+              bloomStates={bloomStates}
             />
           </Suspense>
         )}
