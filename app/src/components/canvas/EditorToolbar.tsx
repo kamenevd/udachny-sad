@@ -49,6 +49,8 @@ interface EditorToolbarProps {
   onModeChange: (mode: EditorMode) => void;
   selectedType: string;
   onTypeChange: (type: string) => void;
+  /** Открыть мастер подбора растений (PLAN12 задача 8); скрыт, если не передан */
+  onOpenWizard?: () => void;
 }
 
 const MODES: { mode: EditorMode; label: string }[] = [
@@ -62,6 +64,7 @@ export function EditorToolbar({
   onModeChange,
   selectedType,
   onTypeChange,
+  onOpenWizard,
 }: EditorToolbarProps) {
   // Адаптив: на мобильных (<640px) — компактные кнопки
   const isMobile = useMediaQuery('(max-width: 640px)');
@@ -116,7 +119,26 @@ export function EditorToolbar({
         </div>
       )}
 
-      {mode === 'view' && <div className="pb-2" />}
+      {/* Мастер подбора растений (PLAN12 задача 8) */}
+      {mode === 'view' && onOpenWizard && (
+        <div className="px-3 py-2">
+          <button
+            type="button"
+            onClick={onOpenWizard}
+            className={[
+              'flex w-full items-center justify-center gap-2 rounded-[8px] border-2 border-ink bg-surface',
+              isMobile ? 'min-h-[44px] text-[13px]' : 'min-h-[48px] text-[15px]',
+              'font-poster font-semibold uppercase tracking-[0.03em] text-ink',
+              'transition-colors hover:bg-ink/10',
+            ].join(' ')}
+          >
+            <span aria-hidden="true">🧭</span>
+            Подобрать растения
+          </button>
+        </div>
+      )}
+
+      {mode === 'view' && !onOpenWizard && <div className="pb-2" />}
     </div>
   );
 }

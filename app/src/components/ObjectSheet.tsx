@@ -20,6 +20,8 @@ import { PhotoGallery } from './PhotoGallery';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { CompositionContextTooltip } from './canvas/CompositionContextTooltip';
 import type { LightCondition } from '../lib/compositionContext';
+import { BedTemplatePicker } from './PlantWizard/BedTemplatePicker';
+import { templatesForObjectType } from '../data/bedTemplates';
 
 export interface ObjectSheetTarget {
   id: string;
@@ -60,6 +62,7 @@ export function ObjectSheet({ object, gardenId, onClose, onOpenPlaceHistory, lig
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [showPlanting, setShowPlanting] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [stampAction, setStampAction] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const skipDirtyRef = useRef(false);
@@ -183,6 +186,18 @@ export function ObjectSheet({ object, gardenId, onClose, onOpenPlaceHistory, lig
           🌱 Посадить здесь
         </Button>
 
+        {/* Шаблон клумбы (PLAN12 задача 9) — только там, где он осмыслен */}
+        {templatesForObjectType(object.type).length > 0 && (
+          <Button
+            variant="secondary"
+            onClick={() => setShowTemplates(true)}
+            disabled={busy}
+            className="w-full"
+          >
+            🌿 Применить шаблон
+          </Button>
+        )}
+
         {onOpenPlaceHistory && (
           <Button
             variant="secondary"
@@ -219,6 +234,16 @@ export function ObjectSheet({ object, gardenId, onClose, onOpenPlaceHistory, lig
         schemaObjectId={objectId}
         onClose={() => setShowPlanting(false)}
         onCreated={() => setStampAction('ПОСАЖЕНО')}
+      />
+
+      {/* Шаблоны клумб (PLAN12 задача 9) */}
+      <BedTemplatePicker
+        open={showTemplates}
+        gardenId={gardenId}
+        schemaObjectId={objectId}
+        objectType={object.type}
+        onClose={() => setShowTemplates(false)}
+        onApplied={() => setStampAction('ПОСАЖЕНО')}
       />
 
       {/* Печать-подтверждение после создания посадки (задача 5.3) */}

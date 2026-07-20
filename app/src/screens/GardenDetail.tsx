@@ -46,6 +46,7 @@ import { SkipLink } from '../components/SkipLink';
 import { ExportPng } from '../components/canvas/ExportPng';
 import { SearchOnCanvas } from '../components/canvas/SearchOnCanvas';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
+import { PlantWizard } from '../components/PlantWizard/PlantWizard';
 import { computeBloomStates } from '../components/canvas/bloomOverlay';
 import { MONTHS_RU_IN } from '../types/plant';
 
@@ -292,6 +293,7 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
   // остальные приглушаются. null — обычный режим схемы.
   const [bloomMonth, setBloomMonth] = useState<number | null>(null);
   const [showBloomPanel, setShowBloomPanel] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
 
   const bloomStates = useMemo(
     () => computeBloomStates(activePlantings ?? [], bloomMonth),
@@ -887,7 +889,11 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
         onModeChange={setEditorMode}
         selectedType={selectedType}
         onTypeChange={setSelectedType}
+        onOpenWizard={() => setShowWizard(true)}
       />
+
+      {/* Мастер подбора растений (PLAN12 задача 8) */}
+      <PlantWizard open={showWizard} onClose={() => setShowWizard(false)} />
 
       {/* ═══ Экспликация (§6, §3.4) ═══ */}
       <Explication
