@@ -47,6 +47,8 @@ import { ExportPng } from '../components/canvas/ExportPng';
 import { SearchOnCanvas } from '../components/canvas/SearchOnCanvas';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
 import { PlantWizard } from '../components/PlantWizard/PlantWizard';
+import { AiLandscapeTips } from '../components/AiLandscapeTips';
+import { useLandscapeAdvisor } from '../hooks/useLandscapeAdvisor';
 import { computeBloomStates } from '../components/canvas/bloomOverlay';
 import { MONTHS_RU_IN } from '../types/plant';
 
@@ -486,6 +488,38 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
       .map((z) => z.condition);
   }, [selectedObjectId, objects, lightZonesData]);
 
+  // ─── AI-советник по ландшафту (PLAN12 задачи 10-11) ───────────────
+  const advisorZones = useMemo(
+    () =>
+      (lightZonesData ?? []).map((z) => ({
+        condition: z.condition,
+        geometry: { points: z.geometry.points },
+      })),
+    [lightZonesData],
+  );
+
+  const landscapeAdvice = useLandscapeAdvisor({
+    objects,
+    plantings: activePlantings ?? [],
+    lightZones: advisorZones,
+  });
+
+  // «Показать на схеме» — то же поведение, что у командной палитры:
+  // выделяем объект и центрируем на нём канвас.
+  const handleShowObject = useCallback(
+    (objectId: string) => {
+      const index = objects.findIndex((o) => o.id === objectId);
+      if (index === -1) return;
+      setSelectedObjectId(objectId);
+      const number = groupMap.get(groupKey(objects[index]));
+      if (number != null) setSelectedNumber(number);
+      if (canvasSize.width > 0 && canvasSize.height > 0) {
+        focusOn(centroidOf(objectsForNumbers[index].geometry.points), canvasSize);
+      }
+    },
+    [objects, objectsForNumbers, groupMap, focusOn, canvasSize],
+  );
+
   // ─── Производные рендера ──────────────────────────────────────────
   const showAttributes = scale * zoom >= 10;
 
@@ -611,6 +645,13 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
               <span aria-hidden="true">🌸</span>
               {bloomMonth !== null ? MONTHS_RU_IN[bloomMonth - 1] : 'Сезон'}
             </button>
+
+            {/* Советник по ландшафту (PLAN12 задача 11) */}
+            <AiLandscapeTips
+              advice={landscapeAdvice}
+              onShowObject={handleShowObject}
+              onOpenWizard={() => setShowWizard(true)}
+            />
 
             {showBloomPanel && (
               <div className="w-[min(92vw,420px)]">
