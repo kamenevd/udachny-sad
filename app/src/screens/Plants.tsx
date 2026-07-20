@@ -18,6 +18,8 @@ import { useToast } from '../components/Toast';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
 import { useBloomingSeasons } from '../hooks/useBloomingSeasons';
 import { MONTHS_RU_IN } from '../types/plant';
+import { PLANT_CATALOG } from '../data/plantCatalog';
+import { seedPlantCatalog } from '../lib/seedPlantCatalog';
 
 // PLAN12 задача 2: к 4 базовым типам добавлены категории справочника —
 // хвойные, розы и луковичные вынесены из «кустарников»/«многолетников»,
@@ -105,6 +107,24 @@ export function Plants({ onBack }: PlantsProps) {
     })).filter((s) => s.items.length > 0);
   }, [bloomingFiltered, deferredSearch, isBlooming]);
 
+  // Загрузка готового справочника в пустой список (PLAN12 задача 13)
+  const [seeding, setSeeding] = useState(false);
+  const [seedError, setSeedError] = useState('');
+
+  const handleSeed = async () => {
+    setSeedError('');
+    setSeeding(true);
+    try {
+      const { added } = await seedPlantCatalog();
+      showToast(`Загружено растений: ${added}`, 'success');
+      await loadPlants();
+    } catch {
+      setSeedError('Не получилось загрузить справочник. Проверьте связь и попробуйте ещё раз.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!name.trim()) return setError('Введите название растения');
     setError('');
@@ -165,15 +185,25 @@ export function Plants({ onBack }: PlantsProps) {
               Каждому растению — карточку!
             </p>
             <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
-              Заведите первое растение — розу, гортензию или флоксы
+              Заведите первое растение — розу, гортензию или флоксы. Или
+              загрузите готовый справочник: {PLANT_CATALOG.length} декоративных
+              видов для Подмосковья с месяцами цветения и требованиями к месту.
             </p>
-            <Button
-              variant="primary"
-              onClick={() => setShowCreate(true)}
-              className="mx-auto max-w-xs"
-            >
-              + Добавить растение
-            </Button>
+            <div className="mx-auto flex max-w-xs flex-col gap-2">
+              <Button
+                variant="primary"
+                onClick={() => void handleSeed()}
+                disabled={seeding}
+              >
+                {seeding ? 'Загружаем…' : '📚 Загрузить примеры растений'}
+              </Button>
+              <Button variant="secondary" onClick={() => setShowCreate(true)}>
+                + Добавить растение
+              </Button>
+            </div>
+            {seedError && (
+              <p className="mt-3 font-mono text-[14px] text-red">{seedError}</p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-4">

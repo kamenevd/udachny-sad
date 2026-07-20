@@ -636,6 +636,7 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
               type="button"
               onClick={() => setShowBloomPanel((v) => !v)}
               aria-expanded={showBloomPanel}
+              data-tour="season-button"
               className={[
                 'flex min-h-[44px] items-center gap-1.5 rounded-[8px] border-2 border-ink px-3',
                 'font-poster text-[14px] font-semibold uppercase shadow-blank transition-colors',
@@ -669,6 +670,44 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Пустая схема: с чего начать (PLAN12 задача 13) */}
+        {editorMode === 'view' && objectDocs !== undefined && objects.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
+            <div className="pointer-events-auto max-w-xs rounded-[10px] border-2 border-ink bg-paper p-[5px] text-center shadow-blank">
+              <div className="rounded-[6px] border border-ink p-4">
+                <div className="mb-2 text-[40px]" aria-hidden="true">📐</div>
+                <p className="mb-2 font-poster text-[17px] font-semibold uppercase text-ink">
+                  Лист пока пустой
+                </p>
+                <p className="mb-3 text-[15px] leading-[1.5] text-ink-muted">
+                  Начните с домика — от него удобно отмерять всё остальное.
+                  Потом добавьте клумбу или композицию и посадите растения.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType('building');
+                    setEditorMode('addObject');
+                  }}
+                  className="mb-2 h-[44px] w-full rounded-lg border-2 border-ink bg-ink px-3 font-poster text-[14px] font-semibold uppercase text-paper"
+                >
+                  🏠 Нарисовать домик
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedType('flowerbed');
+                    setEditorMode('addObject');
+                  }}
+                  className="h-[44px] w-full rounded-lg border-2 border-ink bg-surface px-3 font-poster text-[14px] font-semibold uppercase text-ink"
+                >
+                  🌸 Добавить клумбу
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

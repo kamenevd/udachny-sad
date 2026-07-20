@@ -42,6 +42,7 @@ export function AiLandscapeTips({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        data-tour="advisor-button"
         className={[
           'flex min-h-[44px] items-center gap-1.5 rounded-[8px] border-2 border-ink px-3',
           'font-poster text-[14px] font-semibold uppercase shadow-blank transition-colors',

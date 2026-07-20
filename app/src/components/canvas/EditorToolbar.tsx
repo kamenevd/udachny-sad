@@ -71,7 +71,7 @@ export function EditorToolbar({
   return (
     <div className="shrink-0 border-t-2 border-ink bg-paper">
       {/* Переключатель режимов */}
-      <div className="flex gap-2 px-3 pt-2">
+      <div className="flex gap-2 px-3 pt-2" data-tour="editor-modes">
         {MODES.map((m) => (
           <button
             key={m.mode}

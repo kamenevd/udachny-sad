@@ -27,6 +27,9 @@ export interface StagePanZoomProps {
   onTouchMove: (e: Konva.KonvaEventObject<TouchEvent>) => void;
   onTouchEnd: (e: Konva.KonvaEventObject<TouchEvent>) => void;
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  /** Двойной тап/клик — zoom-to-fit ⇄ приближение к точке (PLAN12 задача 14) */
+  onDblTap: (e: Konva.KonvaEventObject<TouchEvent>) => void;
+  onDblClick: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
 export interface UsePanZoomReturn {
@@ -268,6 +271,39 @@ export function usePanZoom(options?: UsePanZoomOptions): UsePanZoomReturn {
     }
   }, [isPinching]);
 
+  /**
+   * Двойной тап (PLAN12 задача 14): если схема уже приближена — возвращаем
+   * её целиком (zoom-to-fit = сброс к базовому масштабу, при котором участок
+   * вписан в лист), иначе приближаем к точке под пальцем.
+   */
+  const DOUBLE_TAP_ZOOM = 2.5;
+  const handleDoubleTap = useCallback(
+    (e: Konva.KonvaEventObject<TouchEvent | MouseEvent>) => {
+      if (!enabled) return;
+
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      const { scale: oldScale } = readCurrent();
+      if (oldScale > 1.05) {
+        resetView();
+        return;
+      }
+
+      const pointer = stage.getPointerPosition();
+      if (!pointer) return;
+
+      const target = Math.min(maxZoom, DOUBLE_TAP_ZOOM);
+      // Точка модели под пальцем должна остаться под ним после приближения.
+      const modelPoint = {
+        x: (pointer.x - readCurrent().position.x) / oldScale,
+        y: (pointer.y - readCurrent().position.y) / oldScale,
+      };
+      focusOn(modelPoint, { width: stage.width(), height: stage.height() }, target);
+    },
+    [enabled, maxZoom, readCurrent, resetView, focusOn],
+  );
+
   const handleDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
     if (!enabled) return;
 
@@ -288,6 +324,8 @@ export function usePanZoom(options?: UsePanZoomOptions): UsePanZoomReturn {
     onTouchMove: handleTouchMove,
     onTouchEnd: handleTouchEnd,
     onDragEnd: handleDragEnd,
+    onDblTap: handleDoubleTap,
+    onDblClick: handleDoubleTap,
   };
 
   return {
