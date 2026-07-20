@@ -1,26 +1,18 @@
-# BUGS.md — BugHunt 2026-07-19
+# Bugs Found by Ges Bughunt — 2026-07-20
 
-## Статус: ✅ Багов не найдено
+## Bug 1: Telegram widget external request failure
+- **Severity**: Low (cosmetic)
+- **Error**: REQUEST_FAILED: https://telegram.org/js/telegram-widget.js?22 — net::ERR_ABORTED
+- **Cause**: Telegram login widget tries to load external JS, fails in local/preview environment
+- **Fix**: Lazy-load Telegram widget only when needed, or remove if Telegram auth not used
 
-Прогнан полный E2E flow через Playwright на свежем деплое (commit 9bea09a):
+## Bug 2: Onboarding modal blocks all interaction (CRITICAL)
+- **Severity**: HIGH
+- **Error**: Guided tour modal (aria-label="Знакомство с приложением") intercepts pointer events on entire viewport
+- **Symptom**: Cannot click plants, garden items, or any UI element while tour modal is active
+- **Root cause**: Modal overlay (z-50, fixed inset-0) covers full screen and intercepts clicks. Tour never auto-dismisses.
+- **Fix**: Close tour modal on first interaction or provide visible close button. Use spotlight overlay instead of blocking modal.
 
-### Что протестировано
-- ✅ Логин (email/password)
-- ✅ Список участков
-- ✅ Открытие канваса сада (desktop + mobile)
-- ✅ Режим добавления объекта на канвас
-- ✄ Справочник растений
-- ✅ Дашборд статистики
-- ✅ Онбординг-тур (GuidedTour) корректно закрывается
-
-### Console errors: 0
-### Page errors: 0
-
-### Деплой
-- PLAN11 (9bea09a) задеплоен в /opt/udacha-current
-- Обновлён текст дашборда: «Цветений в этом году» (был рудимент «Урожаев»)
-
-## Рекомендации для PLAN12
-- Добавить растения в справочник (сейчас пусто)
-- Создать реальные посадки на канвасе
-- Проверить сезонный отчёт с данными
+## Bug 3: Gardens list empty state after login
+- **Observation**: After login, gardens list shows 0 items, no visible gardens to open
+- **UX issue**: No empty state CTA visible (blocked by tour modal). Possible data race if gardens exist but dont load.
