@@ -87,12 +87,23 @@ export function matchesHeight(heightCm: number, band: HeightBand): boolean {
   return heightCm >= spec.min && heightCm < spec.max;
 }
 
+/**
+ * Прямое противоречие по свету: светолюбивое в глухой тени (или наоборот).
+ * Единственное жёсткое условие мастера — остальные требования это вопрос вкуса
+ * и их можно взвешивать, а без света растение просто не выживет, сколько бы
+ * очков оно ни набрало по почве и высоте.
+ */
+export function isSunIncompatible(plant: CatalogPlant, wanted: SunExposure): boolean {
+  if (plant.sunExposure === wanted) return false;
+  // Полутень — компромиссная зона, она соседствует и с солнцем, и с тенью.
+  return plant.sunExposure !== 'partial_shade' && wanted !== 'partial_shade';
+}
+
 /** Совместимо ли освещение: растение полутени переносит и тень, и солнце хуже */
 function sunScore(plant: CatalogPlant, wanted: SunExposure): number {
   if (plant.sunExposure === wanted) return 3;
-  // Полутень — компромиссная зона, она соседствует и с солнцем, и с тенью.
-  if (plant.sunExposure === 'partial_shade' || wanted === 'partial_shade') return 1;
-  return -3; // солнце против тени — прямое противоречие
+  if (isSunIncompatible(plant, wanted)) return -3;
+  return 1;
 }
 
 function soilScore(plant: CatalogPlant, wanted: SoilType): number {
@@ -168,7 +179,9 @@ export function matchPlants(
   catalog: CatalogPlant[] = PLANT_CATALOG,
   limit = 12,
 ): PlantMatch[] {
+  const wantedSun = criteria.sunExposure;
   return catalog
+    .filter((plant) => !wantedSun || !isSunIncompatible(plant, wantedSun))
     .map((plant) => scorePlant(plant, criteria))
     .filter((m) => m.score > MATCH_THRESHOLD)
     .sort((a, b) => b.score - a.score || a.plant.name.localeCompare(b.plant.name, 'ru'))
