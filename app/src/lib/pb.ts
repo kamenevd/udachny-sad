@@ -11,6 +11,7 @@
  * официальному SDK (`pocketbase` npm, README/типы пакета) и tsc.
  */
 import PocketBase, { type RecordModel } from "pocketbase";
+import type { PlantTraits } from "../types/plant";
 
 export const POCKETBASE_URL =
   import.meta.env.VITE_POCKETBASE_URL ?? "http://192.168.3.59:8090";
@@ -66,7 +67,8 @@ export interface MoistureZone extends RecordModel {
   style?: { color?: string; opacity?: number };
 }
 
-export interface Plant extends RecordModel {
+/** PLAN12 задача 1: характеристики (bloom_months, sun_exposure, …) — types/plant.ts */
+export interface Plant extends RecordModel, PlantTraits {
   userId: string;
   plantType: string;
   name: string;

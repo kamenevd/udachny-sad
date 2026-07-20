@@ -16,10 +16,16 @@ import { PullToRefreshIndicator } from '../components/PullToRefreshIndicator';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useToast } from '../components/Toast';
 
+// PLAN12 задача 2: к 4 базовым типам добавлены категории справочника —
+// хвойные, розы и луковичные вынесены из «кустарников»/«многолетников»,
+// потому что уход и сезонность у них принципиально разные.
 export const PLANT_TYPES: { type: string; label: string; plural: string }[] = [
   { type: 'tree', label: 'Дерево', plural: 'Деревья' },
   { type: 'shrub', label: 'Кустарник', plural: 'Кустарники' },
+  { type: 'conifer', label: 'Хвойное', plural: 'Хвойные' },
+  { type: 'rose', label: 'Роза', plural: 'Розы' },
   { type: 'perennial', label: 'Многолетник', plural: 'Многолетники' },
+  { type: 'bulb', label: 'Луковичное', plural: 'Луковичные' },
   { type: 'annual', label: 'Однолетник', plural: 'Однолетники' },
 ];
 
