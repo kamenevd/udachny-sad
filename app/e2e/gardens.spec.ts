@@ -1,24 +1,34 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
- * E2E: создание участка (задача 21.3).
- * Без сида — пользователь начинает с пустого списка.
+ * E2E: создание участка (задача 21.3; PLAN13 — против реального PocketBase).
+ *
+ * Каждый тест регистрирует СВОЕГО пользователя: MVP разрешает один участок
+ * на аккаунт, а тесты (создание/удаление) гоняются параллельно — общий
+ * пользователь делал бы их зависимыми друг от друга.
  */
 
-async function login(page: import("@playwright/test").Page) {
+async function registerFresh(page: Page) {
+  // Тур покрыт auth.spec; здесь он перекрывал бы CTA пустого состояния.
+  await page.addInitScript(() => {
+    localStorage.setItem("guided-tour-completed", "true");
+  });
   await page.goto("/");
-  await page.getByLabel("Email").fill("dachnik@example.com");
+  await page.getByText("Нет аккаунта? Зарегистрироваться").click();
+  await page
+    .getByLabel("Email")
+    .fill(`sadovod-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`);
   await page.getByLabel("Пароль").fill("secret-123");
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Зарегистрироваться" }).click();
   await expect(page.getByRole("heading", { name: "Мои участки" })).toBeVisible();
 }
 
 test.describe("Участки", () => {
   test("создание участка: модалка → участок в списке", async ({ page }) => {
-    await login(page);
+    await registerFresh(page);
 
-    await expect(page.getByText("Ни одной грядки без записи!")).toBeVisible();
-    await page.getByRole("button", { name: "+ Добавить участок" }).click();
+    await expect(page.getByText("Ваш сад ждёт своих первых жителей")).toBeVisible();
+    await page.getByRole("button", { name: "🏡 Создать первый сад" }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByText("Новый участок")).toBeVisible();
@@ -32,9 +42,9 @@ test.describe("Участки", () => {
   });
 
   test("валидация: без названия участок не создаётся", async ({ page }) => {
-    await login(page);
+    await registerFresh(page);
 
-    await page.getByRole("button", { name: "+ Добавить участок" }).click();
+    await page.getByRole("button", { name: "🏡 Создать первый сад" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByRole("button", { name: "Создать" }).click();
 
@@ -42,9 +52,9 @@ test.describe("Участки", () => {
   });
 
   test("удаление участка: подтверждение → пустой список", async ({ page }) => {
-    await login(page);
+    await registerFresh(page);
 
-    await page.getByRole("button", { name: "+ Добавить участок" }).click();
+    await page.getByRole("button", { name: "🏡 Создать первый сад" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Название").fill("Временный");
     await dialog.getByLabel("Ширина, м").fill("10");
@@ -57,6 +67,6 @@ test.describe("Участки", () => {
     await expect(confirm.getByText("Списать участок?")).toBeVisible();
     await confirm.getByRole("button", { name: "Списать" }).click();
 
-    await expect(page.getByText("Ни одной грядки без записи!")).toBeVisible();
+    await expect(page.getByText("Ваш сад ждёт своих первых жителей")).toBeVisible();
   });
 });

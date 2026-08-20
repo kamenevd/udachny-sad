@@ -1,17 +1,25 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * E2E: навигация между экранами (задача 21.4).
- * Gardens → GardenDetail → PlantingDetail → назад → PlaceHistory → назад,
- * плюс Gardens → Plants. Данные засеяны (?e2e-seed): участок 20×30 м,
- * грядка [2,2]–[18,28], активная посадка «Клубника „Виктория“».
+ * E2E: навигация между экранами (задача 21.4; PLAN13 — против реального
+ * PocketBase). Gardens → GardenDetail → PlantingDetail → назад →
+ * PlaceHistory → назад, плюс Gardens → Plants.
+ *
+ * Данные засеяны global-setup'ом для sadovod@example.com: «Тестовый
+ * участок» 20×30 м, клумба [2,2]–[18,28], активная посадка
+ * «Клубника „Виктория“» с записью журнала. Тесты только читают.
  */
 
 async function loginSeeded(page: Page) {
-  await page.goto("/?e2e-seed");
-  await page.getByLabel("Email").fill("dachnik@example.com");
+  // Онбординг-тур в свежем контексте перекрывал бы клики — гасим флагом,
+  // как у пользователя, который его уже прошёл (сам тур покрыт auth.spec).
+  await page.addInitScript(() => {
+    localStorage.setItem("guided-tour-completed", "true");
+  });
+  await page.goto("/");
+  await page.getByLabel("Email").fill("sadovod@example.com");
   await page.getByLabel("Пароль").fill("secret-123");
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Мои участки" })).toBeVisible();
 }
 

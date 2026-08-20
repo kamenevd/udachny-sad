@@ -45,6 +45,17 @@ function ensureField(collection, spec) {
   return true;
 }
 
+/**
+ * created/updated — autodate-поля. В PocketBase 0.23+ они не появляются
+ * сами у программно созданных коллекций, а фронт сортирует по `-created`
+ * (400 без поля). У созданных вручную коллекций живого сервера могут
+ * существовать частично — добавляем недостающие.
+ */
+function ensureTimestamps(collection) {
+  ensureField(collection, { name: "created", type: "autodate", onCreate: true, onUpdate: false });
+  ensureField(collection, { name: "updated", type: "autodate", onCreate: true, onUpdate: true });
+}
+
 /** Дополнить values select-поля недостающими каноническими значениями. */
 function ensureSelectValues(collection, fieldName, values) {
   const f = collection.fields.getByName(fieldName);
@@ -127,6 +138,7 @@ migrate((app) => {
     ensureField(plants, { name: "latin_name", type: "text", required: false, max: 200 });
     ensureField(plants, { name: "description", type: "text", required: false, max: 5000 });
     ensureField(plants, { name: "catalogId", type: "text", required: false, max: 100 });
+    ensureTimestamps(plants);
     setOwnerRules(plants, "userId");
     app.save(plants);
 
@@ -172,6 +184,7 @@ migrate((app) => {
     });
     ensureField(plantings, { name: "quantity", type: "number", required: false });
     ensureField(plantings, { name: "notes", type: "text", required: false, max: 5000 });
+    ensureTimestamps(plantings);
     setOwnerRules(plantings, "gardenId.ownerId");
     app.save(plantings);
   }
@@ -195,6 +208,7 @@ migrate((app) => {
     ensureField(journalEvents, { name: "title", type: "text", required: false, max: 200 });
     ensureField(journalEvents, { name: "description", type: "text", required: false, max: 5000 });
     ensureField(journalEvents, { name: "metadata", type: "json", required: false, maxSize: 5000 });
+    ensureTimestamps(journalEvents);
     setOwnerRules(journalEvents, "plantingId.gardenId.ownerId");
     app.save(journalEvents);
   }
@@ -205,6 +219,7 @@ migrate((app) => {
       "building", "lawn", "path", "flowerbed", "tree", "shrub",
       "water", "gate", "other",
     ]);
+    ensureTimestamps(schemaObjects);
     setOwnerRules(schemaObjects, "gardenId.ownerId");
     app.save(schemaObjects);
   }
@@ -218,11 +233,13 @@ migrate((app) => {
         ? ["sunny", "partial_shade", "shade"]
         : ["dry", "moderate", "wet"],
     );
+    ensureTimestamps(zones);
     setOwnerRules(zones, "gardenId.ownerId");
     app.save(zones);
   }
 
   // ── gardens: правила (поля на живом уже совпадают с 001) ──
+  ensureTimestamps(gardens);
   setOwnerRules(gardens, "ownerId");
   app.save(gardens);
 
@@ -253,6 +270,7 @@ migrate((app) => {
     photos.viewRule = photosRule;
     photos.createRule = photosRule;
     photos.updateRule = photosRule;
+    ensureTimestamps(photos);
     photos.deleteRule = photosRule;
     app.save(photos);
   }

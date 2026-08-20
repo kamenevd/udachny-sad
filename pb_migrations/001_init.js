@@ -4,8 +4,10 @@
  *
  * Соответствие таблиц Convex → коллекций PocketBase 1:1, с двумя отличиями,
  * продиктованными платформой:
- *  - `createdAt`/`updatedAt` не дублируются вручную — используются встроенные
- *    системные поля PocketBase `created`/`updated` (автозаполняются).
+ *  - `createdAt`/`updatedAt` — autodate-поля `created`/`updated`. ⚠️ В
+ *    PocketBase 0.23+ они НЕ создаются автоматически у программно созданных
+ *    коллекций — задаём явно, иначе `sort=-created` (экран «Мои участки»)
+ *    отвечает 400 (найдено e2e-прогоном против живого бинарника).
  *  - `photos.storageId` (Convex File Storage) заменён на нативное поле типа
  *    `file` — PocketBase хранит и отдаёт файлы сам (см. задачу C.6).
  *
@@ -60,6 +62,8 @@ migrate((app) => {
       { name: "boundary", type: "json", required: false, maxSize: 200000 },
       { name: "originGps", type: "json", required: false, maxSize: 1000 },
       { name: "canvasConfig", type: "json", required: false, maxSize: 1000 },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_gardens_owner ON gardens (ownerId)",
@@ -86,6 +90,8 @@ migrate((app) => {
       { name: "geometry", type: "json", required: true, maxSize: 500000 },
       { name: "style", type: "json", required: false, maxSize: 2000 },
       { name: "sortOrder", type: "number", required: false },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_schemaObjects_garden ON schemaObjects (gardenId)",
@@ -109,6 +115,8 @@ migrate((app) => {
       { name: "geometry", type: "json", required: true, maxSize: 500000 },
       { name: "condition", type: "select", required: true, maxSelect: 1, values: ["sunny", "partial_shade", "shade"] },
       { name: "style", type: "json", required: false, maxSize: 2000 },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_lightZones_garden ON lightZones (gardenId)",
@@ -131,6 +139,8 @@ migrate((app) => {
       { name: "geometry", type: "json", required: true, maxSize: 500000 },
       { name: "condition", type: "select", required: true, maxSelect: 1, values: ["dry", "moderate", "wet"] },
       { name: "style", type: "json", required: false, maxSize: 2000 },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_moistureZones_garden ON moistureZones (gardenId)",
@@ -154,6 +164,8 @@ migrate((app) => {
       { name: "variety", type: "text", required: false, max: 200 },
       { name: "description", type: "text", required: false, max: 5000 },
       { name: "catalogId", type: "text", required: false, max: 100 },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_plants_user ON plants (userId)",
@@ -183,6 +195,8 @@ migrate((app) => {
       // когда у коллекции уже есть свой id (нельзя сослаться на себя до создания).
       { name: "quantity", type: "number", required: false },
       { name: "notes", type: "text", required: false, max: 5000 },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_plantings_garden ON plantings (gardenId)",
@@ -219,6 +233,8 @@ migrate((app) => {
       { name: "title", type: "text", required: false, max: 200 },
       { name: "description", type: "text", required: false, max: 5000 },
       { name: "metadata", type: "json", required: false, maxSize: 5000 },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_journalEvents_planting_date ON journalEvents (plantingId, eventDate)",
@@ -246,6 +262,8 @@ migrate((app) => {
       { name: "width", type: "number", required: false },
       { name: "height", type: "number", required: false },
       { name: "fileSize", type: "number", required: false },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
     indexes: [
       "CREATE INDEX idx_photos_owner ON photos (ownerType, ownerId)",
