@@ -12,9 +12,21 @@
  * Идемпотентность: миграция проверяет существование коллекции по имени
  * перед созданием и выходит рано, если она уже применена — можно запускать
  * `pocketbase migrate up` повторно без ошибок.
+ *
+ * ⚠️ findCollectionByNameOrId в JSVM БРОСАЕТ исключение («sql: no rows in
+ * result set»), если коллекции нет, — не возвращает null. Проверено на
+ * живом PocketBase 0.29: без try/catch миграция падала на чистой базе.
  */
+function findCollectionOrNull(app, name) {
+  try {
+    return app.findCollectionByNameOrId(name);
+  } catch {
+    return null;
+  }
+}
+
 migrate((app) => {
-  if (app.findCollectionByNameOrId("gardens")) {
+  if (findCollectionOrNull(app, "gardens")) {
     return; // уже применено
   }
 
@@ -260,7 +272,7 @@ migrate((app) => {
 }, (app) => {
   // down — обратный порядок из-за FK-зависимостей
   for (const name of ["photos", "journalEvents", "plantings", "plants", "moistureZones", "lightZones", "schemaObjects", "gardens"]) {
-    const c = app.findCollectionByNameOrId(name);
+    const c = findCollectionOrNull(app, name);
     if (c) app.delete(c);
   }
   const usersCollection = app.findCollectionByNameOrId("users");

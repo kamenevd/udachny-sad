@@ -795,11 +795,18 @@ migrate((app) => {
   const users = app.findAllRecords("users");
   for (const user of users) {
     for (const plant of SEED_PLANTS) {
-      const existing = app.findFirstRecordByFilter(
-        "plants",
-        "userId = {:uid} && catalogId = {:cid}",
-        { uid: user.id, cid: plant.catalogId },
-      );
+      // findFirstRecordByFilter в JSVM бросает «sql: no rows in result set»,
+      // когда записей нет (проверено на живом PocketBase 0.29) — ловим.
+      let existing = null;
+      try {
+        existing = app.findFirstRecordByFilter(
+          "plants",
+          "userId = {:uid} && catalogId = {:cid}",
+          { uid: user.id, cid: plant.catalogId },
+        );
+      } catch {
+        existing = null;
+      }
       if (existing) continue;
 
       const record = new Record(app.findCollectionByNameOrId("plants"));
