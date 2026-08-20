@@ -43,6 +43,8 @@ vi.mock("../lib/pb", () => ({
     create: (...args: [{ name: string; boundary?: { points: number[][] } }]) =>
       mockCreateGarden(...args),
   },
+  // SeasonalTasksCard (PLAN13 этап 5) грузит справочник best-effort
+  plants: { list: vi.fn(async () => []) },
 }));
 
 vi.mock("../lib/auth", () => ({

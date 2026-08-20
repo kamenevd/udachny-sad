@@ -19,6 +19,13 @@ import { useToast } from '../components/Toast';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
 import { useBloomingSeasons } from '../hooks/useBloomingSeasons';
 import { MONTHS_RU_IN, PLANT_TYPES } from '../types/plant';
+import {
+  TagFilter,
+  EMPTY_TAG_FILTER,
+  isTagFilterEmpty,
+  matchesTagFilter,
+  type TagFilterState,
+} from '../components/TagFilter';
 import { PLANT_CATALOG } from '../data/plantCatalog';
 import { seedPlantCatalog } from '../lib/seedPlantCatalog';
 
@@ -78,17 +85,27 @@ export function Plants({ onBack }: PlantsProps) {
   const { filtered: bloomingFiltered, isBlooming, countByMonth, hasBloomData } =
     useBloomingSeasons(plants, selectedMonth);
 
+  // Теги условий (PLAN13 этап 4): солнце/тень/влага поверх остальных фильтров.
+  const [tagFilter, setTagFilter] = useState<TagFilterState>(EMPTY_TAG_FILTER);
+  const hasTraitData = useMemo(
+    () => (plants ?? []).some((p) => p.sun_exposure || p.moisture),
+    [plants],
+  );
+
   // Секции реестра по типам; нумерация сквозная.
   // useDeferredValue даёт debounce-эффект — поиск не блокирует ввод.
   const sections = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
+    const tagged = isTagFilterEmpty(tagFilter)
+      ? bloomingFiltered
+      : bloomingFiltered.filter((p) => matchesTagFilter(p, tagFilter));
     const filtered = q
-      ? bloomingFiltered.filter(
+      ? tagged.filter(
           (p) =>
             p.name.toLowerCase().includes(q) ||
             (p.variety?.toLowerCase().includes(q) ?? false),
         )
-      : bloomingFiltered;
+      : tagged;
     let n = 0;
     return PLANT_TYPES.map((t) => ({
       ...t,
@@ -103,7 +120,7 @@ export function Plants({ onBack }: PlantsProps) {
           accentColor: p.primary_color,
         })),
     })).filter((s) => s.items.length > 0);
-  }, [bloomingFiltered, deferredSearch, isBlooming]);
+  }, [bloomingFiltered, deferredSearch, isBlooming, tagFilter]);
 
   // Загрузка готового справочника в пустой список (PLAN12 задача 13)
   const [seeding, setSeeding] = useState(false);
@@ -239,6 +256,10 @@ export function Plants({ onBack }: PlantsProps) {
                 aria-label="Поиск по растениям"
               />
             )}
+            {/* Теги условий (PLAN13 этап 4) — только когда трейты заполнены */}
+            {hasTraitData && (
+              <TagFilter state={tagFilter} onChange={setTagFilter} />
+            )}
             {sections.length === 0 ? (
               <div className="mt-12 text-center">
                 <div className="mb-3 text-4xl">{selectedMonth !== null ? '🌙' : '🔍'}</div>
@@ -258,6 +279,7 @@ export function Plants({ onBack }: PlantsProps) {
                   onClick={() => {
                     setSearch('');
                     setSelectedMonth(null);
+                    setTagFilter(EMPTY_TAG_FILTER);
                   }}
                   className="mx-auto mt-4 max-w-xs"
                 >

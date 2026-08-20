@@ -10,6 +10,7 @@ import { Modal } from "../components/Modal";
 import { Banner } from "../components/Banner";
 import { OnboardingHint } from "../components/OnboardingHint";
 import { GuidedTour } from "../components/GuidedTour";
+import { SeasonalTasksCard } from "../components/SeasonalTasksCard";
 import { SkeletonList, LoadingAnnouncer } from "../components/Skeleton";
 import { useSafePbAction } from "../hooks/useSafePbAction";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
@@ -332,6 +333,8 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {/* Сезонные дела месяца (PLAN13 этап 5) */}
+            <SeasonalTasksCard />
             {gardens.map((g, index) => (
               <div
                 key={g.id}
