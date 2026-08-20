@@ -37,7 +37,7 @@ const { mockState, mockCreateGarden, mockRemoveGardenCascade, mockLogout } = vi.
 });
 
 vi.mock("../lib/pb", () => ({
-  pb: { authStore: { record: { id: "u1" } } },
+  pb: { authStore: { record: { id: "u1" }, isValid: true } },
   gardens: {
     list: vi.fn(async () => mockState.gardens),
     create: (...args: [{ name: string; boundary?: { points: number[][] } }]) =>

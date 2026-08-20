@@ -29,13 +29,50 @@ afterEach(() => {
 });
 
 describe("loginWithYandex", () => {
-  it("на десктопе (jsdom: широкое окно, не мобильный UA) вызывает popup-флоу authWithOAuth2 с { provider: 'yandex' }", async () => {
-    await loginWithYandex();
+  // PLAN10 fix: popup-флоу отключён (Яндекс-приложение знает только
+  // redirect URI udacha.kdnfx.space/auth/yandex/callback), поэтому и на
+  // десктопе всегда redirect: listAuthMethods → authURL + redirect_uri →
+  // window.location.href. Тест раньше проверял popup — обновлён.
+  it("всегда использует redirect-флоу: берёт authURL из listAuthMethods и уходит на Яндекс", async () => {
+    const users = pb.collection("users") as unknown as {
+      listAuthMethods: ReturnType<typeof vi.fn>;
+      authWithOAuth2: ReturnType<typeof vi.fn>;
+    };
+    users.listAuthMethods.mockResolvedValue({
+      oauth2: {
+        providers: [
+          {
+            name: "yandex",
+            state: "st",
+            codeVerifier: "cv",
+            authURL: "https://oauth.yandex.ru/authorize?x=1&redirect_uri=",
+          },
+        ],
+      },
+    });
+    const hrefSpy = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...original, origin: "http://app.test", set href(v: string) { hrefSpy(v); } },
+    });
 
-    expect(pb.collection).toHaveBeenCalledWith("users");
-    const users = vi.mocked(pb.collection).mock.results[0]!.value;
-    expect(users.authWithOAuth2).toHaveBeenCalledTimes(1);
-    expect(users.authWithOAuth2).toHaveBeenCalledWith({ provider: "yandex" });
+    try {
+      await loginWithYandex();
+
+      expect(users.authWithOAuth2).not.toHaveBeenCalled();
+      expect(hrefSpy).toHaveBeenCalledTimes(1);
+      const target = hrefSpy.mock.calls[0]![0] as string;
+      expect(target).toContain("https://oauth.yandex.ru/authorize");
+      expect(target).toContain(
+        encodeURIComponent("http://app.test/auth/yandex/callback"),
+      );
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: original,
+      });
+    }
   });
 });
 

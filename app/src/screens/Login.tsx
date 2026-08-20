@@ -11,6 +11,14 @@ type Flow = "signIn" | "signUp";
 
 const TELEGRAM_BOT_USERNAME = "udacha_auth_bot";
 
+/**
+ * BUGS.md #1: в dev/preview-окружении telegram-widget.js падает с
+ * ERR_ABORTED (нет сети до telegram.org или домен не привязан к боту) —
+ * консоль засоряется, а на экране 5 секунд висит пустой контейнер.
+ * Виджет монтируем только в production-сборке; в dev секция скрыта.
+ */
+const TELEGRAM_LOGIN_ENABLED = import.meta.env.PROD;
+
 // Демо-аккаунт (PLAN10 B.1) — обычный email-пользователь PocketBase,
 // кнопка просто подставляет креды и логинится той же email-логикой.
 const DEMO_EMAIL = "demo@udacha.local";
@@ -90,7 +98,7 @@ export function Login() {
   // на экран сброса пароля (контейнер исчезает из DOM). Если скрипт не
   // загрузился за 5 с (telegram.org заблокирован) — показываем фолбэк (B.3).
   useEffect(() => {
-    if (showReset) return;
+    if (!TELEGRAM_LOGIN_ENABLED || showReset) return;
     const el = tgContainerRef.current;
     if (!el) return;
     const { ready, cleanup } = mountTelegramLoginWidget(
@@ -211,22 +219,24 @@ export function Login() {
           </p>
         )}
 
-        <div className="text-center">
-          <p className="mb-2 text-[13px] font-mono text-ink-muted">
-            {t("login.telegramHint")}
-          </p>
-          <div
-            ref={tgContainerRef}
-            data-testid="telegram-widget-container"
-            className="flex min-h-[48px] justify-center"
-          />
-          {tgFailed && (
-            <p role="alert" className="mt-2 text-[15px] font-mono text-red">
-              Telegram-виджет не загрузился (возможно, заблокирован). Войдите
-              через Яндекс или email.
+        {TELEGRAM_LOGIN_ENABLED && (
+          <div className="text-center">
+            <p className="mb-2 text-[13px] font-mono text-ink-muted">
+              {t("login.telegramHint")}
             </p>
-          )}
-        </div>
+            <div
+              ref={tgContainerRef}
+              data-testid="telegram-widget-container"
+              className="flex min-h-[48px] justify-center"
+            />
+            {tgFailed && (
+              <p role="alert" className="mt-2 text-[15px] font-mono text-red">
+                Telegram-виджет не загрузился (возможно, заблокирован). Войдите
+                через Яндекс или email.
+              </p>
+            )}
+          </div>
+        )}
 
       </div>
       </main>

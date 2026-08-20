@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ClientResponseError } from "pocketbase";
 import { pb, gardens as gardensApi, type Garden } from "../lib/pb";
 import { logout } from "../lib/auth";
 import { getStreakForGardens, type StreakResult } from "../lib/pbStats";
@@ -51,20 +52,42 @@ export function validateGardenInput(
 
 export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: GardensProps) {
   const [gardens, setGardens] = useState<Garden[] | undefined>(undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [streak, setStreak] = useState<StreakResult | null>(null);
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // BUGS.md #3: раньше упавший запрос списка оставлял вечный скелетон (ошибка
+  // не ловилась), а пользователь видел «пусто» без объяснения. Теперь ошибка
+  // переводит экран в состояние «не загрузилось» с кнопкой «Повторить»;
+  // автоотмена SDK (двойной маунт StrictMode) ошибкой не считается.
   const loadGardens = async () => {
-    const list = await gardensApi.list({ sort: "-created" });
+    setLoadFailed(false);
+    let list: Garden[];
+    try {
+      list = await gardensApi.list({ sort: "-created" });
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.isAbort) return [];
+      setLoadFailed(true);
+      return [];
+    }
     setGardens(list);
-    const streakResult = await getStreakForGardens(list.map((g) => g.id));
-    setStreak(streakResult);
+    // Стрик — вторичная информация: его ошибка не должна ронять экран.
+    try {
+      setStreak(await getStreakForGardens(list.map((g) => g.id)));
+    } catch {
+      setStreak(null);
+    }
     return list;
   };
 
   useEffect(() => {
+    // Гейт в main.tsx рендерит Gardens только при валидной авторизации, но
+    // токен мог протухнуть между рендерами — без проверки запрос вернёт
+    // пустой список (listRule отфильтрует всё), что выглядит как потеря данных.
+    if (!pb.authStore.isValid) return;
     void loadGardens();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pull-to-refresh (задача 34.2): принудительно перечитываем список участков.
@@ -265,7 +288,24 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
 
       <main id="main-content" className="mx-auto max-w-2xl p-4">
-        {gardens === undefined ? (
+        {loadFailed && gardens === undefined ? (
+          <div className="mt-20 text-center" role="alert">
+            <div className="mb-4 text-6xl">📡</div>
+            <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
+              Не получилось загрузить
+            </p>
+            <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
+              Проверьте связь — данные никуда не делись
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => void loadGardens()}
+              className="mx-auto max-w-xs"
+            >
+              Повторить
+            </Button>
+          </div>
+        ) : gardens === undefined ? (
           <div className="mt-6">
             <LoadingAnnouncer />
             <SkeletonList count={3} />

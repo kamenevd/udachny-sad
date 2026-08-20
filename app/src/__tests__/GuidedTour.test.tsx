@@ -64,6 +64,35 @@ describe("GuidedTour", () => {
     expect(localStorage.getItem("guided-tour-completed")).toBe("true");
   });
 
+  // BUGS.md #2: тур не должен запирать пользователя — любой из трёх выходов
+  // (тап по фону, Esc, крестик) закрывает его и ставит флаг «пройдено».
+  it("тап по фону (click-outside) закрывает тур", () => {
+    render(<GuidedTour />);
+    fireEvent.click(screen.getByTestId("guided-tour-backdrop"));
+    expect(screen.queryByText("Создайте участок")).toBeNull();
+    expect(localStorage.getItem("guided-tour-completed")).toBe("true");
+  });
+
+  it("клик по карточке тура НЕ закрывает его (stopPropagation)", () => {
+    render(<GuidedTour />);
+    fireEvent.click(screen.getByText("Создайте участок"));
+    expect(screen.getByText("Создайте участок")).toBeTruthy();
+  });
+
+  it("Escape закрывает тур", () => {
+    render(<GuidedTour />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByText("Создайте участок")).toBeNull();
+    expect(localStorage.getItem("guided-tour-completed")).toBe("true");
+  });
+
+  it("кнопка-крестик закрывает тур", () => {
+    render(<GuidedTour />);
+    fireEvent.click(screen.getByLabelText("Закрыть знакомство"));
+    expect(screen.queryByText("Создайте участок")).toBeNull();
+    expect(localStorage.getItem("guided-tour-completed")).toBe("true");
+  });
+
   it("шаг с подсветкой открывается, даже если якорь есть на странице", () => {
     const anchor = document.createElement("div");
     anchor.setAttribute("data-tour", "editor-modes");
