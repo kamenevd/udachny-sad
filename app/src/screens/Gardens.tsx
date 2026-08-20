@@ -311,20 +311,20 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
             <SkeletonList count={3} />
           </div>
         ) : gardens.length === 0 ? (
-          <div className="mt-20 text-center">
+          <div className="mt-20 text-center animate-fade-in-up motion-reduce:animate-none">
             <div className="mb-4 text-6xl">🌱</div>
             <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
-              Ни одного цветка без записи!
+              Ваш сад ждёт своих первых жителей
             </p>
             <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
-              Добавьте первый сад — дом, клумбы, деревья
+              Создайте участок — дом, клумбы, деревья — и начните вести его историю
             </p>
             <Button
               variant="primary"
               onClick={() => setShowCreate(true)}
               className="mx-auto max-w-xs"
             >
-              + Добавить участок
+              🏡 Создать первый сад
             </Button>
             <div className="mx-auto mt-6 max-w-sm text-left">
               <OnboardingHint step="first-garden" />
@@ -332,10 +332,11 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {gardens.map((g) => (
+            {gardens.map((g, index) => (
               <div
                 key={g.id}
-                className="rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank"
+                className="rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank animate-fade-in-up motion-reduce:animate-none"
+                style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
               >
                 <div className="flex items-center justify-between rounded-[6px] border border-ink p-4">
                   <button

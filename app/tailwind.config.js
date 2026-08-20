@@ -30,9 +30,17 @@ export default {
           from: { transform: 'translateY(100%)' },
           to: { transform: 'translateY(0)' },
         },
+        // PLAN13 этап 2: staggered-появление карточек списков.
+        // both — карточка невидима до старта анимации (animation-delay
+        // задаётся инлайн через style={{ animationDelay }})
+        'fade-in-up': {
+          from: { opacity: '0', transform: 'translateY(10px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'sheet-up': 'sheet-up 0.22s ease-out',
+        'fade-in-up': 'fade-in-up 0.3s ease-out both',
       },
     },
   },

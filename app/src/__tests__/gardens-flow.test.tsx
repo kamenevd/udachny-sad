@@ -88,14 +88,14 @@ describe("Gardens — flow создание → список", () => {
   it("пустой список показывает призыв добавить первый участок", async () => {
     renderGardens();
     await waitFor(() =>
-      expect(screen.getByText(/Ни одного цветка без записи/)).toBeInTheDocument(),
+      expect(screen.getByText(/Ваш сад ждёт своих первых жителей/)).toBeInTheDocument(),
     );
   });
 
   it("валидация — пустое имя не создаёт участок", async () => {
     renderGardens();
-    await waitFor(() => screen.getByText("+ Добавить участок"));
-    fireEvent.click(screen.getByText("+ Добавить участок"));
+    await waitFor(() => screen.getByText("🏡 Создать первый сад"));
+    fireEvent.click(screen.getByText("🏡 Создать первый сад"));
     fireEvent.click(screen.getByText("Создать"));
     await waitFor(() =>
       expect(screen.getByText("Введите название участка")).toBeInTheDocument(),
@@ -106,8 +106,8 @@ describe("Gardens — flow создание → список", () => {
   it("создание участка добавляет его в список без перезагрузки", async () => {
     renderGardens();
 
-    await waitFor(() => screen.getByText("+ Добавить участок"));
-    fireEvent.click(screen.getByText("+ Добавить участок"));
+    await waitFor(() => screen.getByText("🏡 Создать первый сад"));
+    fireEvent.click(screen.getByText("🏡 Создать первый сад"));
     fireEvent.change(screen.getByLabelText("Название"), {
       target: { value: "Дача в Малинниках" },
     });
@@ -126,7 +126,7 @@ describe("Gardens — flow создание → список", () => {
       expect.objectContaining({ name: "Дача в Малинниках" }),
     );
     // Пустое состояние должно уйти
-    expect(screen.queryByText(/Ни одного цветка без записи/)).toBeNull();
+    expect(screen.queryByText(/Ваш сад ждёт своих первых жителей/)).toBeNull();
     // Тост об успехе
     await waitFor(() =>
       expect(screen.getByText("Участок добавлен")).toBeInTheDocument(),

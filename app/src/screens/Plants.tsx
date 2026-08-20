@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useState, useDeferredValue } from 'react';
+import { ClientResponseError } from 'pocketbase';
 import { pb, plants as plantsApi, type Plant } from '../lib/pb';
 import { useSafePbAction } from '../hooks/useSafePbAction';
 import { Button } from '../components/Button';
@@ -44,19 +45,29 @@ interface PlantsProps {
 
 export function Plants({ onBack }: PlantsProps) {
   const [plants, setPlants] = useState<Plant[] | undefined>(undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
   const createPlant = useSafePbAction(
     (data: { plantType: string; name: string; variety?: string }) =>
       plantsApi.create({ ...data, userId: pb.authStore.record?.id ?? '' }),
   );
   const { showToast } = useToast();
 
+  // Как и Gardens (BUGS.md #3): упавший запрос не должен оставлять вечный
+  // скелетон — показываем состояние «не загрузилось» с кнопкой «Повторить».
   const loadPlants = async () => {
-    const list = await plantsApi.list({ sort: 'name' });
-    setPlants(list);
+    setLoadFailed(false);
+    try {
+      const list = await plantsApi.list({ sort: 'name' });
+      setPlants(list);
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.isAbort) return;
+      setLoadFailed(true);
+    }
   };
 
   useEffect(() => {
     void loadPlants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pull-to-refresh (задача 34.2): принудительно перечитываем справочник.
@@ -173,13 +184,30 @@ export function Plants({ onBack }: PlantsProps) {
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
 
       <main id="main-content" className="mx-auto max-w-2xl p-4 pb-28">
-        {plants === undefined ? (
+        {loadFailed && plants === undefined ? (
+          <div className="mt-20 text-center" role="alert">
+            <div className="mb-4 text-6xl">📡</div>
+            <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
+              Не получилось загрузить
+            </p>
+            <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
+              Проверьте связь — справочник никуда не делся
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => void loadPlants()}
+              className="mx-auto max-w-xs"
+            >
+              Повторить
+            </Button>
+          </div>
+        ) : plants === undefined ? (
           <div className="mt-6">
             <LoadingAnnouncer />
             <SkeletonList count={4} />
           </div>
         ) : plants.length === 0 ? (
-          <div className="mt-20 text-center">
+          <div className="mt-20 text-center animate-fade-in-up motion-reduce:animate-none">
             <div className="mb-4 text-6xl">🌻</div>
             <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
               Каждому растению — карточку!
@@ -230,18 +258,35 @@ export function Plants({ onBack }: PlantsProps) {
                 <p className="font-poster text-[17px] font-semibold uppercase text-ink-muted">
                   {selectedMonth !== null
                     ? `В ${MONTHS_RU_IN[selectedMonth - 1]} ничего не цветёт`
-                    : 'Ничего не нашлось'}
+                    : 'Ничего не найдено'}
                 </p>
                 <p className="mt-1 text-[15px] text-ink-muted">
                   {selectedMonth !== null
                     ? 'Выберите другой месяц или сбросьте фильтр'
                     : 'Попробуйте изменить запрос'}
                 </p>
+                {/* PLAN13 этап 2: CTA сброса фильтров прямо из пустого состояния */}
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSearch('');
+                    setSelectedMonth(null);
+                  }}
+                  className="mx-auto mt-4 max-w-xs"
+                >
+                  Сбросить фильтры
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {sections.map((s) => (
-                  <Registry key={s.type} sectionTitle={s.plural} items={s.items} />
+                {sections.map((s, index) => (
+                  <div
+                    key={s.type}
+                    className="animate-fade-in-up motion-reduce:animate-none"
+                    style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+                  >
+                    <Registry sectionTitle={s.plural} items={s.items} />
+                  </div>
                 ))}
               </div>
             )}
