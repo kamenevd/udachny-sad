@@ -23,4 +23,26 @@
     width: 100%;
     padding: 24px;
   }
+
+  /* Отчёт по саду (PLAN13 этап 4, ExportReport.tsx) — тот же приём */
+  .print-garden-report,
+  .print-garden-report * {
+    visibility: visible;
+  }
+
+  .print-garden-report {
+    position: absolute;
+    inset: auto;
+    top: 0;
+    left: 0;
+    width: 100%;
+    overflow: visible;
+  }
+
+  /* Экранные кнопки внутри отчёта в печать не попадают */
+  .print-garden-report .print-hidden,
+  .print-garden-report .print-hidden * {
+    visibility: hidden;
+    display: none;
+  }
 }

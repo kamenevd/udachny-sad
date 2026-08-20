@@ -35,6 +35,26 @@ export interface PlantTraits {
   latin_name?: string;
 }
 
+/**
+ * Категории справочника с подписями (PLAN12 задача 2: 4 базовых типа PLAN
+ * расширены до 7 — у хвойных, роз и луковичных принципиально разные уход и
+ * сезонность). Живёт здесь, а не в screens/Plants.tsx, чтобы компоненты
+ * канвы/форм не тянули целый экран в свой чанк (ленивая загрузка, 17.3).
+ */
+export const PLANT_TYPES: { type: string; label: string; plural: string }[] = [
+  { type: 'tree', label: 'Дерево', plural: 'Деревья' },
+  { type: 'shrub', label: 'Кустарник', plural: 'Кустарники' },
+  { type: 'conifer', label: 'Хвойное', plural: 'Хвойные' },
+  { type: 'rose', label: 'Роза', plural: 'Розы' },
+  { type: 'perennial', label: 'Многолетник', plural: 'Многолетники' },
+  { type: 'bulb', label: 'Луковичное', plural: 'Луковичные' },
+  { type: 'annual', label: 'Однолетник', plural: 'Однолетники' },
+];
+
+export function plantTypeLabel(type: string): string {
+  return PLANT_TYPES.find((t) => t.type === type)?.label ?? type;
+}
+
 export const SUN_EXPOSURES: { value: SunExposure; label: string; icon: string }[] = [
   { value: 'full_sun', label: 'Солнце', icon: '☀️' },
   { value: 'partial_shade', label: 'Полутень', icon: '⛅' },

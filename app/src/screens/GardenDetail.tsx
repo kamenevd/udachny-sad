@@ -44,6 +44,8 @@ import { useDrawZone } from '../components/canvas/useDrawZone';
 import { Modal } from '../components/Modal';
 import { SkipLink } from '../components/SkipLink';
 import { ExportPng } from '../components/canvas/ExportPng';
+import { ExportReport } from '../components/canvas/ExportReport';
+import '../utils/printStyles.css';
 import { SearchOnCanvas } from '../components/canvas/SearchOnCanvas';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
 import { PlantWizard } from '../components/PlantWizard/PlantWizard';
@@ -606,6 +608,15 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
           <ExportPng
             stageRef={stageRef}
             gardenName={gardenName}
+            className={`shrink-0 cursor-pointer ${headerTextColor}`}
+          />
+
+          {/* Отчёт для печати / PDF (PLAN13 этап 4) */}
+          <ExportReport
+            stageRef={stageRef}
+            gardenName={gardenName}
+            items={items}
+            plantings={activePlantings ?? []}
             className={`shrink-0 cursor-pointer ${headerTextColor}`}
           />
         </div>

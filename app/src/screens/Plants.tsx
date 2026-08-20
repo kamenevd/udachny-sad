@@ -18,26 +18,13 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useToast } from '../components/Toast';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
 import { useBloomingSeasons } from '../hooks/useBloomingSeasons';
-import { MONTHS_RU_IN } from '../types/plant';
+import { MONTHS_RU_IN, PLANT_TYPES } from '../types/plant';
 import { PLANT_CATALOG } from '../data/plantCatalog';
 import { seedPlantCatalog } from '../lib/seedPlantCatalog';
 
-// PLAN12 задача 2: к 4 базовым типам добавлены категории справочника —
-// хвойные, розы и луковичные вынесены из «кустарников»/«многолетников»,
-// потому что уход и сезонность у них принципиально разные.
-export const PLANT_TYPES: { type: string; label: string; plural: string }[] = [
-  { type: 'tree', label: 'Дерево', plural: 'Деревья' },
-  { type: 'shrub', label: 'Кустарник', plural: 'Кустарники' },
-  { type: 'conifer', label: 'Хвойное', plural: 'Хвойные' },
-  { type: 'rose', label: 'Роза', plural: 'Розы' },
-  { type: 'perennial', label: 'Многолетник', plural: 'Многолетники' },
-  { type: 'bulb', label: 'Луковичное', plural: 'Луковичные' },
-  { type: 'annual', label: 'Однолетник', plural: 'Однолетники' },
-];
-
-export function plantTypeLabel(type: string): string {
-  return PLANT_TYPES.find((t) => t.type === type)?.label ?? type;
-}
+// PLAN13: словарь типов переехал в types/plant.ts (общий для канвы и форм,
+// не тянет экран в чужие чанки); ре-экспорт сохраняет старые импорты.
+export { PLANT_TYPES, plantTypeLabel } from '../types/plant';
 
 interface PlantsProps {
   onBack: () => void;

@@ -385,10 +385,13 @@ function ObjectShape({
 
   // Режим сезонности: цветущие объекты остаются яркими и получают заливку
   // цветом растения, остальные приглушаются — «что цветёт в этом месяце»
-  // читается с одного взгляда (задача 6).
+  // читается с одного взгляда (задача 6). PLAN13 этап 3: объекты только с
+  // декоративно-лиственными/хвойными (evergreen) не считаются «вне сезона» —
+  // приглушаем их совсем слегка.
   const seasonMode = bloomMonth !== null;
   const isBlooming = seasonMode && (bloom?.blooming ?? false);
-  const seasonOpacity = seasonMode && !isBlooming ? 0.3 : 1;
+  const isEvergreen = seasonMode && !isBlooming && (bloom?.evergreen ?? false);
+  const seasonOpacity = !seasonMode || isBlooming ? 1 : isEvergreen ? 0.85 : 0.3;
   const bloomColor = isBlooming ? bloom?.color : undefined;
 
   // Обработчик тапа/клика
