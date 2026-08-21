@@ -782,6 +782,21 @@ textarea.input {
   border: 1px solid var(--line);
 }
 
+.quick-looking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.quick-looking .spinner {
+  margin: 0;
+  width: 20px;
+  height: 20px;
+  border-width: 3px;
+}
+
 .quick-matches {
   display: flex;
   flex-direction: column;
@@ -1113,11 +1128,48 @@ textarea.input {
   margin-top: 10px;
 }
 
-/* ---------- «Что будет» (план сада) ---------- */
+/* ---------- «Что зреет» (куда растёт приложение) ---------- */
 
-.roadmap-intro {
-  font-size: 18px;
-  color: var(--ink-2);
+.roadmap-now {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--green-soft);
+  border: 1px solid var(--green);
+  border-radius: var(--radius);
+}
+
+.roadmap-now-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: roadmap-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes roadmap-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.roadmap-now-label {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--green);
+  margin-bottom: 2px;
+}
+
+.roadmap-now-text {
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -1135,29 +1187,6 @@ textarea.input {
   margin-top: 6px;
 }
 
-.roadmap-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 14px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.roadmap-badge--done {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.roadmap-badge--doing {
-  background: var(--amber-soft);
-  color: var(--amber);
-}
-
-.roadmap-badge--planned {
-  background: var(--surface-2);
-  color: var(--ink-2);
-}
-
 .roadmap-item {
   display: flex;
   gap: 14px;
@@ -1167,18 +1196,11 @@ textarea.input {
   border-radius: var(--radius);
 }
 
-.roadmap-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-
 .roadmap-date {
   font-size: 14px;
   color: var(--ink-2);
   font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .roadmap-emoji {

@@ -50,8 +50,8 @@ export default function MorePage() {
         <Link className="row" to="/roadmap">
           <span className="row-emoji">🌱</span>
           <div className="row-body">
-            <div className="row-title">Что будет</div>
-            <div className="row-sub">Что уже есть, что делаем, что потом</div>
+            <div className="row-title">Что зреет</div>
+            <div className="row-sub">Что пишем сейчас, что уже есть и что потом</div>
           </div>
         </Link>
         {canInstall && (
