@@ -40,10 +40,15 @@ const THUMBS = ['100x100', '400x400', '800x0'];
 
 const ownerRule = 'owner = @request.auth.id';
 const ownerCreate = '@request.auth.id != "" && owner = @request.auth.id';
-const plotRule = 'plot.owner = @request.auth.id';
-const plotCreate = '@request.auth.id != "" && plot.owner = @request.auth.id';
-const plantingRule = 'planting.plot.owner = @request.auth.id';
-const plantingCreate = '@request.auth.id != "" && planting.plot.owner = @request.auth.id';
+const collaboratorRule = 'owner = @request.auth.id || members ?= @request.auth.id';
+const inviteJoinRule =
+  '@request.auth.email != "" && @collection.plot_invites.plot ?= id && @collection.plot_invites.email ?= @request.auth.email && @collection.plot_invites.status ?= "invited"';
+const plotRule = 'plot.owner = @request.auth.id || plot.members ?= @request.auth.id';
+const plotCreate = '@request.auth.id != "" && (plot.owner = @request.auth.id || plot.members ?= @request.auth.id)';
+const plantingRule =
+  'planting.plot.owner = @request.auth.id || planting.plot.members ?= @request.auth.id';
+const plantingCreate =
+  '@request.auth.id != "" && (planting.plot.owner = @request.auth.id || planting.plot.members ?= @request.auth.id)';
 
 // Определения без системных полей (id/created/updated PB добавляет сам).
 const collections = [
@@ -52,13 +57,39 @@ const collections = [
     type: 'base',
     fields: [
       { type: 'relation', name: 'owner', collectionId: '_pb_users_auth_', maxSelect: 1, required: true, cascadeDelete: true },
+      { type: 'relation', name: 'members', collectionId: '_pb_users_auth_', maxSelect: 50 },
       { type: 'text', name: 'name', required: true, max: 120 },
       { type: 'number', name: 'width', required: true, min: 2, max: 1000 },
       { type: 'number', name: 'height', required: true, min: 2, max: 1000 },
       { type: 'autodate', name: 'created', onCreate: true },
       { type: 'autodate', name: 'updated', onCreate: true, onUpdate: true },
     ],
-    listRule: ownerRule, viewRule: ownerRule, createRule: ownerCreate, updateRule: ownerRule, deleteRule: ownerRule,
+    listRule: collaboratorRule,
+    viewRule: collaboratorRule,
+    createRule: ownerCreate,
+    updateRule: `${collaboratorRule} || (${inviteJoinRule})`,
+    deleteRule: ownerRule,
+  },
+  {
+    name: 'plot_invites',
+    type: 'base',
+    fields: [
+      { type: 'relation', name: 'plot', collectionId: '@plots', maxSelect: 1, required: true, cascadeDelete: true },
+      { type: 'text', name: 'email', required: true, max: 255 },
+      { type: 'select', name: 'status', required: true, maxSelect: 1, values: ['invited', 'accepted'] },
+      { type: 'relation', name: 'user', collectionId: '_pb_users_auth_', maxSelect: 1 },
+      { type: 'relation', name: 'invited_by', collectionId: '_pb_users_auth_', maxSelect: 1, required: true },
+      { type: 'autodate', name: 'created', onCreate: true },
+      { type: 'autodate', name: 'updated', onCreate: true, onUpdate: true },
+    ],
+    indexes: [
+      'CREATE UNIQUE INDEX `idx_plot_invites_plot_email` ON `plot_invites` (`plot`, `email`)',
+    ],
+    listRule: 'plot.owner = @request.auth.id || plot.members ?= @request.auth.id || email = @request.auth.email',
+    viewRule: 'plot.owner = @request.auth.id || plot.members ?= @request.auth.id || email = @request.auth.email',
+    createRule: '@request.auth.id != "" && plot.owner = @request.auth.id && invited_by = @request.auth.id',
+    updateRule: 'plot.owner = @request.auth.id || (email = @request.auth.email && status = "invited")',
+    deleteRule: 'plot.owner = @request.auth.id || email = @request.auth.email',
   },
   {
     name: 'features',
@@ -69,6 +100,7 @@ const collections = [
       { type: 'text', name: 'label', max: 120 },
       { type: 'json', name: 'shape', required: true, maxSize: 100000 },
       { type: 'number', name: 'z' },
+      { type: 'text', name: 'author_email', max: 255 },
       { type: 'autodate', name: 'created', onCreate: true },
       { type: 'autodate', name: 'updated', onCreate: true, onUpdate: true },
     ],
@@ -98,6 +130,14 @@ const collections = [
       { type: 'relation', name: 'feature', collectionId: '@features', maxSelect: 1 },
       { type: 'number', name: 'x', required: true },
       { type: 'number', name: 'y', required: true },
+      { type: 'text', name: 'plant_name', max: 160 },
+      {
+        type: 'select',
+        name: 'plant_ptype',
+        maxSelect: 1,
+        values: ['perennial', 'shrub', 'tree', 'conifer', 'bulb', 'annual', 'vine', 'grass'],
+      },
+      { type: 'text', name: 'author_email', max: 255 },
       { type: 'date', name: 'planted_on' },
       { type: 'select', name: 'status', required: true, maxSelect: 1, values: ['growing', 'dead', 'moved'] },
       { type: 'date', name: 'ended_on' },
@@ -116,6 +156,7 @@ const collections = [
       { type: 'date', name: 'happened_on', required: true },
       { type: 'text', name: 'note', max: 4000 },
       { type: 'file', name: 'photos', maxSelect: 5, maxSize: 10485760, mimeTypes: IMG, thumbs: THUMBS },
+      { type: 'text', name: 'author_email', max: 255 },
       { type: 'autodate', name: 'created', onCreate: true },
       { type: 'autodate', name: 'updated', onCreate: true, onUpdate: true },
     ],

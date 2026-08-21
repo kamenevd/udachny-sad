@@ -61,6 +61,8 @@ export default function PlantingPage() {
   }
 
   const plant = planting.expand?.plant
+  const plantName = plant?.name ?? planting.plant_name ?? 'Растение'
+  const plantType = plant?.ptype ?? planting.plant_ptype ?? ''
   const feature = planting.expand?.feature
   const plot = planting.expand?.plot
   const byYear = groupBy(entries, (e) => String(yearOf(e.happened_on)))
@@ -72,7 +74,7 @@ export default function PlantingPage() {
           ←
         </button>
         <h1>
-          {plantEmoji(plant?.ptype ?? '')} {plant?.name ?? 'Растение'}
+          {plantEmoji(plantType)} {plantName}
         </h1>
         <button className="icon-btn" aria-label="Изменить" onClick={() => setEditOpen(true)}>
           ✏️
@@ -83,7 +85,7 @@ export default function PlantingPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className={`badge badge--${planting.status}`}>{STATUS_LABELS[planting.status]}</span>
           {plant?.cultivar && <span className="badge">«{plant.cultivar}»</span>}
-          {plant?.ptype && <span className="badge">{PLANT_TYPES[plant.ptype].label}</span>}
+          {plantType && <span className="badge">{PLANT_TYPES[plantType as keyof typeof PLANT_TYPES]?.label}</span>}
         </div>
         <p className="muted">
           {planting.planted_on && <>Посажено: {fmtDate(planting.planted_on)}</>}
@@ -92,6 +94,12 @@ export default function PlantingPage() {
               <br />
               {planting.status === 'dead' ? 'Погибло' : 'Пересажено'}: {fmtDate(planting.ended_on)}
               {planting.end_note && ` — ${planting.end_note}`}
+            </>
+          )}
+          {planting.author_email && (
+            <>
+              <br />
+              Кто посадил(а): {planting.author_email}
             </>
           )}
         </p>
@@ -183,6 +191,7 @@ function EntryRow({ entry, onDelete }: { entry: Entry; onDelete: () => void }) {
           <span className="entry-type">{meta.label}</span>
           <span className="entry-date">{fmtDate(entry.happened_on)}</span>
         </div>
+        {entry.author_email && <p className="muted">Кто: {entry.author_email}</p>}
         {entry.note && <p className="entry-note">{entry.note}</p>}
         {entry.photos.length > 0 && (
           <div className="entry-photos">
@@ -225,8 +234,15 @@ export function AddEntrySheet({
       data.set('etype', etype)
       data.set('happened_on', date)
       data.set('note', note)
+      data.set('author_email', pb.authStore.record?.email ?? '')
       for (const f of photos) data.append('photos', f)
-      await pb.collection('entries').create(data)
+      try {
+        await pb.collection('entries').create(data)
+      } catch (e) {
+        if ((e as { status?: number })?.status !== 400) throw e
+        data.delete('author_email')
+        await pb.collection('entries').create(data)
+      }
 
       if (etype === 'death' && planting.status === 'growing') {
         await pb.collection('plantings').update(planting.id, {

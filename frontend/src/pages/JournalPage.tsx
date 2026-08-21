@@ -90,7 +90,10 @@ export default function JournalPage() {
           <div className="year-head">{month}</div>
           {list.map((e) => {
             const meta = ENTRY_TYPES[e.etype]
-            const plant = e.expand?.planting?.expand?.plant
+            const planting = e.expand?.planting
+            const plant = planting?.expand?.plant
+            const plantName = plant?.name ?? planting?.plant_name ?? 'Растение'
+            const plantType = plant?.ptype ?? planting?.plant_ptype ?? ''
             return (
               <Link
                 key={e.id}
@@ -102,11 +105,11 @@ export default function JournalPage() {
                 <div className="entry-body">
                   <div className="entry-head">
                     <span className="entry-type">
-                      {plantEmoji(plant?.ptype ?? '')} {plant?.name ?? 'Растение'} —{' '}
-                      {meta.label.toLowerCase()}
+                      {plantEmoji(plantType)} {plantName} — {meta.label.toLowerCase()}
                     </span>
                     <span className="entry-date">{fmtDateShort(e.happened_on)}</span>
                   </div>
+                  {e.author_email && <p className="muted">Кто: {e.author_email}</p>}
                   {e.note && <p className="entry-note">{e.note}</p>}
                   {e.photos.length > 0 && (
                     <div className="entry-photos">

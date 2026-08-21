@@ -25,7 +25,7 @@ export function useAuth() {
   const token = useSyncExternalStore(subscribeAuth, () => pb.authStore.token)
   return {
     valid: !!token && pb.authStore.isValid,
-    email: (pb.authStore.record?.email as string) ?? '',
+    email: ((pb.authStore.record?.email as string) ?? '').toLowerCase(),
     userId: pb.authStore.record?.id ?? '',
   }
 }

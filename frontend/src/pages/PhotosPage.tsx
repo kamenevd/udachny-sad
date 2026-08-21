@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fileUrl, pb } from '../lib/pb'
-import type { Entry } from '../lib/types'
+import { fileUrl, pb, pbError } from '../lib/pb'
+import type { Entry, Planting } from '../lib/types'
 import { ENTRY_TYPES, plantEmoji } from '../lib/catalog'
-import { fmtDate, fmtMonthYear, groupBy, plural } from '../lib/dates'
+import { fmtDate, fmtMonthYear, groupBy, plural, todayISO } from '../lib/dates'
 import JournalTabs from '../ui/JournalTabs'
+import Sheet from '../ui/Sheet'
+import { toast } from '../ui/toast'
 
 const PER_PAGE = 40
 
@@ -19,9 +21,12 @@ interface Photo {
 export default function PhotosPage() {
   const [entries, setEntries] = useState<Entry[] | null>(null)
   const [page, setPage] = useState(1)
+  const [reloadKey, setReloadKey] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [busy, setBusy] = useState(false)
   const [openAt, setOpenAt] = useState(-1)
+  const [quickPhoto, setQuickPhoto] = useState<File | null>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -43,7 +48,7 @@ export default function PhotosPage() {
     return () => {
       cancelled = true
     }
-  }, [page])
+  }, [page, reloadKey])
 
   const photos: Photo[] = useMemo(
     () =>
@@ -58,6 +63,13 @@ export default function PhotosPage() {
     <div className="page">
       <div className="top-bar">
         <h1>📖 Журнал</h1>
+        <button
+          className="icon-btn"
+          aria-label="Сфотографировать и добавить в журнал"
+          onClick={() => cameraRef.current?.click()}
+        >
+          📷
+        </button>
       </div>
 
       <JournalTabs />
@@ -105,6 +117,19 @@ export default function PhotosPage() {
         </button>
       )}
 
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) setQuickPhoto(f)
+          e.target.value = ''
+        }}
+      />
+
       {openAt >= 0 && photos[openAt] && (
         <PhotoViewer
           photos={photos}
@@ -113,7 +138,149 @@ export default function PhotosPage() {
           onClose={() => setOpenAt(-1)}
         />
       )}
+
+      {quickPhoto && (
+        <PhotoOneTapSheet
+          photo={quickPhoto}
+          onClose={() => setQuickPhoto(null)}
+          onSaved={() => {
+            setQuickPhoto(null)
+            setEntries(null)
+            setPage(1)
+            setReloadKey((n) => n + 1)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function PhotoOneTapSheet({
+  photo,
+  onClose,
+  onSaved,
+}: {
+  photo: File
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [url, setUrl] = useState('')
+  const [plantings, setPlantings] = useState<Planting[] | null>(null)
+  const [q, setQ] = useState('')
+  const [picked, setPicked] = useState<Planting | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const u = URL.createObjectURL(photo)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [photo])
+
+  useEffect(() => {
+    pb.collection('plantings')
+      .getFullList<Planting>({ expand: 'plant,plot', sort: '-created' })
+      .then(setPlantings)
+      .catch((e) => {
+        toast(pbError(e))
+        setPlantings([])
+      })
+  }, [])
+
+  const filtered = (plantings ?? []).filter((p) => {
+    if (!q.trim()) return true
+    const plant = p.expand?.plant
+    const name = (plant?.name ?? p.plant_name ?? '').toLowerCase()
+    const cultivar = (plant?.cultivar ?? '').toLowerCase()
+    const plotName = (p.expand?.plot?.name ?? '').toLowerCase()
+    return (name + ' ' + cultivar + ' ' + plotName).includes(q.trim().toLowerCase())
+  })
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!picked) return
+    setBusy(true)
+    try {
+      const data = new FormData()
+      data.set('planting', picked.id)
+      data.set('etype', 'note')
+      data.set('happened_on', todayISO())
+      data.set('note', 'Фото одним касанием.')
+      data.set('author_email', pb.authStore.record?.email ?? '')
+      data.append('photos', photo)
+      try {
+        await pb.collection('entries').create(data)
+      } catch (e) {
+        if ((e as { status?: number })?.status !== 400) throw e
+        data.delete('author_email')
+        await pb.collection('entries').create(data)
+      }
+      toast('Снимок уже в журнале 📖')
+      onSaved()
+    } catch (err) {
+      toast(pbError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Sheet title="Фото одним касанием" onClose={onClose}>
+      <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="quick-photo">
+          <img src={url} alt="Новый снимок" />
+        </div>
+
+        <label className="field">
+          <span>К какому растению добавить?</span>
+          <input
+            className="input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Поиск по названию и участку…"
+          />
+        </label>
+
+        {plantings === null && <div className="spinner" />}
+
+        {plantings !== null && filtered.length === 0 && (
+          <p className="muted" style={{ textAlign: 'center' }}>
+            Нечего выбрать. Сначала посадите растение на плане.
+          </p>
+        )}
+
+        {filtered.length > 0 && (
+          <div className="list" style={{ maxHeight: '34dvh', overflowY: 'auto' }}>
+            {filtered.map((p) => {
+              const plant = p.expand?.plant
+              const plantName = plant?.name ?? p.plant_name ?? 'Растение'
+              const plantType = plant?.ptype ?? p.plant_ptype ?? ''
+              const subtitle = [p.expand?.plot?.name, p.status === 'growing' ? 'растёт' : 'из истории']
+                .filter(Boolean)
+                .join(' · ')
+              return (
+                <button
+                  type="button"
+                  key={p.id}
+                  className="row"
+                  style={picked?.id === p.id ? { borderColor: 'var(--green)', background: 'var(--green-soft)' } : undefined}
+                  onClick={() => setPicked(p)}
+                >
+                  <span className="row-emoji">{plantEmoji(plantType)}</span>
+                  <div className="row-body">
+                    <div className="row-title">{plantName}</div>
+                    <div className="row-sub">{subtitle}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <button className="btn btn--block" disabled={busy || !picked}>
+          {busy ? 'Сохраняем…' : 'Добавить фото в журнал'}
+        </button>
+      </form>
+    </Sheet>
   )
 }
 
@@ -135,7 +302,10 @@ function PhotoViewer({
 
   const p = photos[index]
   const entry = p.entry
-  const plant = entry.expand?.planting?.expand?.plant
+  const planting = entry.expand?.planting
+  const plant = planting?.expand?.plant
+  const plantName = plant?.name ?? planting?.plant_name ?? 'Растение'
+  const plantType = plant?.ptype ?? planting?.plant_ptype ?? ''
   const meta = ENTRY_TYPES[entry.etype]
   const hasPrev = index > 0
   const hasNext = index < photos.length - 1
@@ -213,10 +383,13 @@ function PhotoViewer({
 
       <button className="viewer-caption" onClick={() => nav(`/planting/${entry.planting}`)}>
         <span className="viewer-plant">
-          {plantEmoji(plant?.ptype ?? '')} {plant?.name ?? 'Растение'} —{' '}
-          {meta.label.toLowerCase()}
+          {plantEmoji(plantType)} {plantName} — {meta.label.toLowerCase()}
         </span>
-        <span className="viewer-sub">{fmtDate(entry.happened_on)} · открыть запись ›</span>
+        <span className="viewer-sub">
+          {fmtDate(entry.happened_on)}
+          {entry.author_email ? ` · кто: ${entry.author_email}` : ''}
+          {' · открыть запись ›'}
+        </span>
       </button>
     </div>
   )

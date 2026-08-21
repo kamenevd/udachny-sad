@@ -356,17 +356,30 @@ function PlantingPanel({ plantingId }: { plantingId: string }) {
   const p = plantings.find((x) => x.id === plantingId)
   if (!p) return null
   const plant = p.expand?.plant
+  const plantName = plant?.name ?? p.plant_name ?? 'Растение'
+  const plantType = plant?.ptype ?? p.plant_ptype ?? ''
   const year = p.planted_on ? yearOf(p.planted_on) : null
 
   async function quickWater() {
     if (!p) return
     try {
-      await pb.collection('entries').create({
-        planting: p.id,
-        etype: 'water',
-        happened_on: todayISO(),
-        note: '',
-      })
+      try {
+        await pb.collection('entries').create({
+          planting: p.id,
+          etype: 'water',
+          happened_on: todayISO(),
+          note: '',
+          author_email: pb.authStore.record?.email ?? '',
+        })
+      } catch (e) {
+        if ((e as { status?: number })?.status !== 400) throw e
+        await pb.collection('entries').create({
+          planting: p.id,
+          etype: 'water',
+          happened_on: todayISO(),
+          note: '',
+        })
+      }
       toast(`💧 Полив записан — ${fmtDate(todayISO())}`)
     } catch (e) {
       toast(pbError(e))
@@ -376,13 +389,14 @@ function PlantingPanel({ plantingId }: { plantingId: string }) {
   return (
     <div className="plan-panel">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 28 }}>{plantEmoji(plant?.ptype ?? '')}</span>
+        <span style={{ fontSize: 28 }}>{plantEmoji(plantType)}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3>{plant?.name ?? 'Растение'}</h3>
+          <h3>{plantName}</h3>
           <p className="muted">
             {plant?.cultivar ? `«${plant.cultivar}» · ` : ''}
-            {plant?.ptype ? PLANT_TYPES[plant.ptype].label : ''}
+            {plantType ? PLANT_TYPES[plantType as keyof typeof PLANT_TYPES]?.label : ''}
             {year ? ` · с ${year} года` : ''}
+            {p.author_email ? ` · посадил(а): ${p.author_email}` : ''}
           </p>
         </div>
         <button className="icon-btn" aria-label="Закрыть" onClick={() => usePlan.getState().select(null)}>
@@ -429,7 +443,7 @@ function PlantPicker({ onClose }: { onClose: () => void }) {
   )
 
   function pick(p: Plant) {
-    usePlan.getState().startAddPlanting(p.id, p.name)
+    usePlan.getState().startAddPlanting(p.id, p.name, p.ptype || '')
     onClose()
   }
 

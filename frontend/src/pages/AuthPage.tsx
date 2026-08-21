@@ -16,6 +16,11 @@ export default function AuthPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    const normEmail = email.trim().toLowerCase()
+    if (!normEmail) {
+      setError('Введите электронную почту')
+      return
+    }
     if (password.length < 8) {
       setError('Пароль должен быть не короче 8 символов')
       return
@@ -23,9 +28,9 @@ export default function AuthPage() {
     setBusy(true)
     try {
       if (mode === 'register') {
-        await pb.collection('users').create({ email, password, passwordConfirm: password })
+        await pb.collection('users').create({ email: normEmail, password, passwordConfirm: password })
       }
-      await pb.collection('users').authWithPassword(email, password)
+      await pb.collection('users').authWithPassword(normEmail, password)
       nav('/', { replace: true })
     } catch (err) {
       const status = (err as { status?: number }).status

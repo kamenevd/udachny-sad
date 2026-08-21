@@ -127,6 +127,7 @@ export default function PlacePage() {
           {entriesByYear.get(year)!.map((e) => {
             const p = plantingById.get(e.planting)
             const em = ENTRY_TYPES[e.etype]
+            const plantName = p?.expand?.plant?.name ?? p?.plant_name ?? 'Растение'
             return (
               <Link
                 key={e.id}
@@ -138,10 +139,11 @@ export default function PlacePage() {
                 <div className="entry-body">
                   <div className="entry-head">
                     <span className="entry-type">
-                      {p?.expand?.plant?.name ?? 'Растение'} — {em.label.toLowerCase()}
+                      {plantName} — {em.label.toLowerCase()}
                     </span>
                     <span className="entry-date">{fmtDateShort(e.happened_on)}</span>
                   </div>
+                  {e.author_email && <p className="muted">Кто: {e.author_email}</p>}
                   {e.note && <p className="entry-note">{e.note}</p>}
                 </div>
               </Link>
@@ -155,18 +157,21 @@ export default function PlacePage() {
 
 function PlantingRow({ p }: { p: Planting }) {
   const plant = p.expand?.plant
+  const plantName = plant?.name ?? p.plant_name ?? 'Растение'
+  const plantType = plant?.ptype ?? p.plant_ptype ?? ''
   const from = p.planted_on ? yearOf(p.planted_on) : null
   const to = p.ended_on ? yearOf(p.ended_on) : null
   const span = from && to && from !== to ? `${from}–${to}` : (to ?? from ?? '')
 
   return (
     <Link className="row" to={`/planting/${p.id}`}>
-      <span className="row-emoji">{plantEmoji(plant?.ptype ?? '')}</span>
+      <span className="row-emoji">{plantEmoji(plantType)}</span>
       <div className="row-body">
-        <div className="row-title">{plant?.name ?? 'Растение'}</div>
+        <div className="row-title">{plantName}</div>
         <div className="row-sub">
           {span && `${span} · `}
           {STATUS_LABELS[p.status]}
+          {p.author_email && ` · посадил(а): ${p.author_email}`}
           {p.end_note && ` — ${p.end_note}`}
         </div>
       </div>

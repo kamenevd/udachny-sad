@@ -295,7 +295,8 @@ export default function PlanCanvas() {
             .map((p) => {
               const r = Math.max(0.42, 15 / view.s)
               const isSel = sel?.type === 'planting' && sel.id === p.id
-              const name = p.expand?.plant?.name ?? ''
+              const name = p.expand?.plant?.name ?? p.plant_name ?? ''
+              const ptype = p.expand?.plant?.ptype ?? p.plant_ptype ?? ''
               return (
                 <g key={p.id}>
                   <circle
@@ -314,7 +315,7 @@ export default function PlanCanvas() {
                     dominantBaseline="central"
                     style={{ pointerEvents: 'none' }}
                   >
-                    {plantEmoji(p.expand?.plant?.ptype ?? '')}
+                    {plantEmoji(ptype)}
                   </text>
                   {view.s >= 22 && name && (
                     <text

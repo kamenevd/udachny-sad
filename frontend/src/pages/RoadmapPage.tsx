@@ -78,13 +78,23 @@ const ITEMS: Item[] = [
     ],
   },
   {
-    status: 'doing',
+    status: 'done',
     emoji: '📷',
     title: 'Фото одним касанием',
     lines: [
       'Кнопка с фотоаппаратом прямо в фотоленте:',
       'сняли, выбрали растение —',
       'снимок уже в журнале.',
+    ],
+  },
+  {
+    status: 'done',
+    emoji: '👨‍👩‍👧‍👦',
+    title: 'Семейный сад',
+    lines: [
+      'Один участок на несколько человек по приглашению email.',
+      'Все видят общий план, добавляют посадки и ведут журнал.',
+      'Видно, кто сделал запись или посадку; выход участника данные не удаляет.',
     ],
   },
   {
@@ -117,33 +127,34 @@ export default function RoadmapPage() {
         Без дат — как в саду: по готовности.
       </p>
 
-      {SECTIONS.map(({ status, heading }) => (
-        <section key={status} className="roadmap-section">
-          <h2 className="roadmap-heading">
-            {heading}
-            <span className={`roadmap-badge ${STATUS[status].cls}`}>{STATUS[status].label}</span>
-          </h2>
-          <div className="list">
-            {ITEMS.filter((it) => it.status === status).map((it) => (
-              <div key={it.title} className="roadmap-item">
-                <span className="roadmap-emoji">{it.emoji}</span>
-                <div>
-                  <div className="roadmap-title">{it.title}</div>
-                  <p className="roadmap-lines">
-                    {it.lines.map((l, i) => (
-                      <span key={i}>
-                        {l}
-                        {i < it.lines.length - 1 && <br />}
-                      </span>
-                    ))}
-                  </p>
+      {SECTIONS
+        .filter(({ status }) => ITEMS.some((it) => it.status === status))
+        .map(({ status, heading }) => (
+          <section key={status} className="roadmap-section">
+            <h2 className="roadmap-heading">
+              {heading}
+              <span className={`roadmap-badge ${STATUS[status].cls}`}>{STATUS[status].label}</span>
+            </h2>
+            <div className="list">
+              {ITEMS.filter((it) => it.status === status).map((it) => (
+                <div key={it.title} className="roadmap-item">
+                  <span className="roadmap-emoji">{it.emoji}</span>
+                  <div>
+                    <div className="roadmap-title">{it.title}</div>
+                    <p className="roadmap-lines">
+                      {it.lines.map((l, i) => (
+                        <span key={i}>
+                          {l}
+                          {i < it.lines.length - 1 && <br />}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
-
+              ))}
+            </div>
+          </section>
+        ))}
       <p className="muted" style={{ textAlign: 'center' }}>
         Сад растёт медленно, но каждый год — заметно.
       </p>

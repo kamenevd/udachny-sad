@@ -13,7 +13,7 @@ export type Mode =
   | { m: 'view' }
   | { m: 'edit'; featureId: string; draft: Shape }
   | { m: 'add-feature'; kind: FeatureKind }
-  | { m: 'add-planting'; plantId: string; plantName: string }
+  | { m: 'add-planting'; plantId: string; plantName: string; plantPtype: string }
   | { m: 'move-planting'; plantingId: string }
   | { m: 'quick-plant'; photo: File } & QuickPlant
 
@@ -29,6 +29,10 @@ export interface QuickPlant {
 
 /** К чему привязывается посадка при размещении: приоритет клумба > изгородь > газон. */
 const ANCHOR_KINDS: FeatureKind[] = ['bed', 'hedge', 'lawn']
+
+function isBadRequest(e: unknown): boolean {
+  return (e as { status?: number })?.status === 400
+}
 
 function findAnchor(features: Feature[], p: Pt): string {
   for (const kind of ANCHOR_KINDS) {
@@ -56,7 +60,7 @@ interface PlanState {
   commitEdit: () => Promise<void>
   cancelEdit: () => void
   startAddFeature: (kind: FeatureKind) => void
-  startAddPlanting: (plantId: string, plantName: string) => void
+  startAddPlanting: (plantId: string, plantName: string, plantPtype: string) => void
   startQuickPlant: (photo: File, q: QuickPlant) => void
   startMovePlanting: (plantingId: string) => void
   cancelMode: () => void
@@ -130,8 +134,8 @@ export const usePlan = create<PlanState>((set, get) => ({
 
   startAddFeature: (kind) => set({ mode: { m: 'add-feature', kind }, sel: null }),
 
-  startAddPlanting: (plantId, plantName) =>
-    set({ mode: { m: 'add-planting', plantId, plantName }, sel: null }),
+  startAddPlanting: (plantId, plantName, plantPtype) =>
+    set({ mode: { m: 'add-planting', plantId, plantName, plantPtype }, sel: null }),
 
   startQuickPlant: (photo, q) => set({ mode: { m: 'quick-plant', photo, ...q }, sel: null }),
 
@@ -146,13 +150,27 @@ export const usePlan = create<PlanState>((set, get) => ({
     if (mode.m === 'add-feature') {
       const shape = snapShape(keepInside(FEATURE_KINDS[mode.kind].makeShape(p), plot.width, plot.height))
       try {
-        const rec = await pb.collection('features').create<Feature>({
+        const payload = {
           plot: plotId,
           kind: mode.kind,
           label: '',
           shape,
           z: 0,
-        })
+          author_email: pb.authStore.record?.email ?? '',
+        }
+        let rec: Feature
+        try {
+          rec = await pb.collection('features').create<Feature>(payload)
+        } catch (e) {
+          if (!isBadRequest(e)) throw e
+          rec = await pb.collection('features').create<Feature>({
+            plot: plotId,
+            kind: mode.kind,
+            label: '',
+            shape,
+            z: 0,
+          })
+        }
         set({
           features: [...get().features, rec],
           mode: { m: 'edit', featureId: rec.id, draft: rec.shape },
@@ -168,18 +186,36 @@ export const usePlan = create<PlanState>((set, get) => ({
     if (mode.m === 'add-planting') {
       const feature = findAnchor(features, p)
       try {
-        const rec = await pb.collection('plantings').create<Planting>(
-          {
-            plot: plotId,
-            plant: mode.plantId,
-            feature,
-            x: Math.round(p.x * 100) / 100,
-            y: Math.round(p.y * 100) / 100,
-            planted_on: todayISO(),
-            status: 'growing',
-          },
-          { expand: 'plant' },
-        )
+        const payload = {
+          plot: plotId,
+          plant: mode.plantId,
+          feature,
+          x: Math.round(p.x * 100) / 100,
+          y: Math.round(p.y * 100) / 100,
+          plant_name: mode.plantName,
+          plant_ptype: mode.plantPtype,
+          author_email: pb.authStore.record?.email ?? '',
+          planted_on: todayISO(),
+          status: 'growing',
+        }
+        let rec: Planting
+        try {
+          rec = await pb.collection('plantings').create<Planting>(payload, { expand: 'plant' })
+        } catch (e) {
+          if (!isBadRequest(e)) throw e
+          rec = await pb.collection('plantings').create<Planting>(
+            {
+              plot: plotId,
+              plant: mode.plantId,
+              feature,
+              x: Math.round(p.x * 100) / 100,
+              y: Math.round(p.y * 100) / 100,
+              planted_on: todayISO(),
+              status: 'growing',
+            },
+            { expand: 'plant' },
+          )
+        }
         set({
           plantings: [...get().plantings, rec],
           mode: { m: 'view' },
@@ -212,18 +248,37 @@ export const usePlan = create<PlanState>((set, get) => ({
           fd.set('photo', mode.photo)
           await pb.collection('plants').update(plantId, fd)
         }
-        rec = await pb.collection('plantings').create<Planting>(
-          {
-            plot: plotId,
-            plant: plantId,
-            feature,
-            x: Math.round(p.x * 100) / 100,
-            y: Math.round(p.y * 100) / 100,
-            planted_on: todayISO(),
-            status: 'growing',
-          },
-          { expand: 'plant' },
-        )
+        try {
+          rec = await pb.collection('plantings').create<Planting>(
+            {
+              plot: plotId,
+              plant: plantId,
+              feature,
+              x: Math.round(p.x * 100) / 100,
+              y: Math.round(p.y * 100) / 100,
+              plant_name: mode.plantName,
+              plant_ptype: mode.ptype,
+              author_email: pb.authStore.record?.email ?? '',
+              planted_on: todayISO(),
+              status: 'growing',
+            },
+            { expand: 'plant' },
+          )
+        } catch (e) {
+          if (!isBadRequest(e)) throw e
+          rec = await pb.collection('plantings').create<Planting>(
+            {
+              plot: plotId,
+              plant: plantId,
+              feature,
+              x: Math.round(p.x * 100) / 100,
+              y: Math.round(p.y * 100) / 100,
+              planted_on: todayISO(),
+              status: 'growing',
+            },
+            { expand: 'plant' },
+          )
+        }
       } catch (e) {
         toast(pbError(e))
         set({ mode: { m: 'view' }, saving: false })
@@ -240,8 +295,15 @@ export const usePlan = create<PlanState>((set, get) => ({
         fd.set('etype', 'note')
         fd.set('happened_on', todayISO())
         fd.set('note', 'Посадили — первое фото.')
+        fd.set('author_email', pb.authStore.record?.email ?? '')
         fd.append('photos', mode.photo)
-        await pb.collection('entries').create(fd)
+        try {
+          await pb.collection('entries').create(fd)
+        } catch (e) {
+          if (!isBadRequest(e)) throw e
+          fd.delete('author_email')
+          await pb.collection('entries').create(fd)
+        }
         toast(`«${mode.plantName}» растёт на плане, фото — в журнале 📖`)
       } catch {
         toast('Растение на плане, но фото в журнал не попало. Попробуйте добавить из журнала.')

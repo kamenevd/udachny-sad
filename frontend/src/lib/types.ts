@@ -37,6 +37,7 @@ export type EntryType =
 export interface Plot {
   id: string
   owner: string
+  members?: string[]
   name: string
   width: number
   height: number
@@ -51,6 +52,7 @@ export interface Feature {
   label: string
   shape: Shape
   z: number
+  author_email?: string
   created: string
   updated: string
 }
@@ -74,6 +76,9 @@ export interface Planting {
   feature: string
   x: number
   y: number
+  plant_name?: string
+  plant_ptype?: PlantType | ''
+  author_email?: string
   planted_on: string
   status: PlantingStatus
   ended_on: string
@@ -94,9 +99,29 @@ export interface Entry {
   happened_on: string
   note: string
   photos: string[]
+  author_email?: string
   created: string
   updated: string
   expand?: {
     planting?: Planting
+  }
+}
+
+export type PlotInviteStatus = 'invited' | 'accepted'
+
+export interface PlotInvite {
+  id: string
+  plot: string
+  email: string
+  status: PlotInviteStatus
+  user?: string
+  invited_by: string
+  created: string
+  updated: string
+  expand?: {
+    user?: {
+      id: string
+      email: string
+    }
   }
 }
