@@ -150,7 +150,8 @@ export default function PlotsPage() {
         }
         setLastPlot(rec.id)
         setForm(null)
-        nav(`/plot/${rec.id}`)
+        // Свежий участок: план сразу предложит пройтись по точкам и снять схему.
+        nav(`/plot/${rec.id}`, { state: { freshPlot: true } })
         return
       }
       setForm(null)

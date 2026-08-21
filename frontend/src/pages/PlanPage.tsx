@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { pb, pbError, setLastPlot } from '../lib/pb'
 import type { Plant } from '../lib/types'
 import { ENTRY_TYPES, FEATURE_KINDS, KIND_MENU, PLANT_TYPE_MENU, PLANT_TYPES, plantEmoji } from '../lib/catalog'
@@ -7,7 +7,6 @@ import { extendLine, insertPolyPoint, removePolyPoint, shrinkLine, toPoly } from
 import { fmtDate, todayISO, yearOf } from '../lib/dates'
 import Sheet from '../ui/Sheet'
 import { toast } from '../ui/toast'
-import type { PhotoWalkResult } from '../plan/store'
 import { usePlan } from '../plan/store'
 import PlanCanvas from '../plan/PlanCanvas'
 import QuickPlantSheet from '../plan/QuickPlantSheet'
@@ -16,20 +15,30 @@ import StartupSchemaSheet from '../plan/StartupSchemaSheet'
 export default function PlanPage() {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
-  const { plot, features, plantings, loading, saving, savingText, walkResult, sel, mode, load } = usePlan()
+  const location = useLocation()
+  const { plot, features, plantings, loading, saving, savingText, sel, mode, load } = usePlan()
   const [addOpen, setAddOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [walkOpen, setWalkOpen] = useState(false)
   const [startupOpen, setStartupOpen] = useState(false)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [quickPhoto, setQuickPhoto] = useState<File | null>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
+  // Мастер нового участка передал «участок только что создан» — сразу зовём прогулку по точкам.
+  const freshPlot = (location.state as { freshPlot?: boolean } | null)?.freshPlot === true
+  const autoStartRef = useRef(false)
 
   useEffect(() => {
     if (!id) return
     setLastPlot(id)
     load(id)
   }, [id, load])
+
+  useEffect(() => {
+    if (!freshPlot || loading || !plot || autoStartRef.current) return
+    if (features.length > 0) return
+    autoStartRef.current = true
+    setStartupOpen(true)
+  }, [freshPlot, loading, plot, features.length])
 
   if (loading) {
     return (
@@ -82,12 +91,6 @@ export default function PlanPage() {
       {mode.m === 'quick-plant' && (
         <ModeHint text={`Коснитесь плана — куда посадили «${mode.plantName}»`} />
       )}
-      {mode.m === 'photo-walk' && !mode.start && (
-        <ModeHint text="Коснитесь плана — где началась прогулка" />
-      )}
-      {mode.m === 'photo-walk' && mode.start && (
-        <ModeHint text="Коснитесь плана — где прогулка закончилась" />
-      )}
       {mode.m === 'move-planting' && <ModeHint text="Коснитесь нового места на плане" />}
 
       {/* Сохранение «посадки одним касанием»: фото едет на сервер */}
@@ -114,8 +117,9 @@ export default function PlanPage() {
         </>
       )}
 
+      {/* Стартовая схема — только пока участок пустой: у обжитого плана её не видно. */}
       {showFab && features.length === 0 && (
-        <div className="plan-panel" style={{ bottom: 'calc(var(--nav-h) + var(--safe-b) + 96px)' }}>
+        <div className="plan-panel" style={{ bottom: '150px' }}>
           <h3>Новый участок?</h3>
           <p className="muted">Пройдитесь с телефоном по отмеченным точкам — и план нарисуется сам.</p>
           <button className="btn btn--block" onClick={() => setStartupOpen(true)}>
@@ -163,28 +167,10 @@ export default function PlanPage() {
             className="btn btn--secondary btn--block"
             onClick={() => {
               setAddOpen(false)
-              setStartupOpen(true)
-            }}
-          >
-            🧭 Стартовая схема с фото
-          </button>
-          <button
-            className="btn btn--secondary btn--block"
-            onClick={() => {
-              setAddOpen(false)
               setPickerOpen(true)
             }}
           >
             🌷 Посадить из списка
-          </button>
-          <button
-            className="btn btn--secondary btn--block"
-            onClick={() => {
-              setAddOpen(false)
-              setWalkOpen(true)
-            }}
-          >
-            🚶 Прогулка с фотоаппаратом
           </button>
           <div className="section-title">Объекты участка</div>
           <div className="etype-grid">
@@ -208,16 +194,8 @@ export default function PlanPage() {
 
       {quickPhoto && <QuickPlantSheet photo={quickPhoto} onClose={() => setQuickPhoto(null)} />}
       {startupOpen && <StartupSchemaSheet onClose={() => setStartupOpen(false)} />}
-      {walkOpen && <PhotoWalkSheet onClose={() => setWalkOpen(false)} />}
 
       {renameId && <RenameSheet featureId={renameId} onClose={() => setRenameId(null)} />}
-
-      {walkResult && (
-        <PhotoWalkResultSheet
-          result={walkResult}
-          onClose={() => usePlan.getState().clearWalkResult()}
-        />
-      )}
     </div>
   )
 }
@@ -582,167 +560,6 @@ function PlantPicker({ onClose }: { onClose: () => void }) {
           </div>
         </form>
       )}
-    </Sheet>
-  )
-}
-
-function PhotoWalkSheet({ onClose }: { onClose: () => void }) {
-  const [photos, setPhotos] = useState<File[]>([])
-  const [newPlantType, setNewPlantType] = useState('perennial')
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const galleryRef = useRef<HTMLInputElement>(null)
-  const urls = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos])
-
-  useEffect(() => {
-    return () => urls.forEach((u) => URL.revokeObjectURL(u))
-  }, [urls])
-
-  function addPhotos(list: FileList | null) {
-    if (!list?.length) return
-    setPhotos((prev) => [...prev, ...Array.from(list)].slice(0, 24))
-  }
-
-  function start() {
-    if (!photos.length) return
-    usePlan.getState().startPhotoWalk(photos, newPlantType)
-    onClose()
-  }
-
-  return (
-    <Sheet title="Прогулка с фотоаппаратом" onClose={onClose}>
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p>
-          Снимайте сад по пути. Приложение расставит серию фото на плане и добавит то, что не узнает,
-          как новые растения.
-        </p>
-        <p className="muted">
-          Если угадает не так — это можно поправить после прогулки: открыть посадку, передвинуть точку
-          и изменить растение.
-        </p>
-      </div>
-
-      <div className="photo-input">
-        {photos.map((f, i) => (
-          <div key={`${f.name}-${i}`} className="photo-preview">
-            <img src={urls[i]} alt="" />
-            <button type="button" aria-label="Убрать фото" onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" style={{ flex: 1 }} onClick={() => cameraRef.current?.click()}>
-          📷 Снять ещё
-        </button>
-        <button className="btn btn--secondary" style={{ flex: 1 }} onClick={() => galleryRef.current?.click()}>
-          🖼️ Из галереи
-        </button>
-      </div>
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          addPhotos(e.target.files)
-          e.target.value = ''
-        }}
-      />
-      <input
-        ref={galleryRef}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          addPhotos(e.target.files)
-          e.target.value = ''
-        }}
-      />
-
-      <label className="field">
-        <span>Если это новое растение, какой тип поставить по умолчанию?</span>
-        <select className="input" value={newPlantType} onChange={(e) => setNewPlantType(e.target.value)}>
-          {PLANT_TYPE_MENU.map((t) => (
-            <option key={t} value={t}>
-              {PLANT_TYPES[t].emoji} {PLANT_TYPES[t].label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <button className="btn btn--block" disabled={photos.length === 0} onClick={start}>
-        {photos.length === 0 ? 'Сначала добавьте фото' : `Дальше: отметить маршрут (${photos.length})`}
-      </button>
-    </Sheet>
-  )
-}
-
-function PhotoWalkResultSheet({
-  result,
-  onClose,
-}: {
-  result: PhotoWalkResult
-  onClose: () => void
-}) {
-  const nav = useNavigate()
-
-  return (
-    <Sheet title="Прогулка готова" onClose={onClose}>
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p>
-          Узнали рядом: <b>{result.matched}</b> · Добавили новых: <b>{result.created}</b>
-          {result.failed > 0 && (
-            <>
-              {' '}
-              · Не вышло: <b>{result.failed}</b>
-            </>
-          )}
-        </p>
-        <p className="muted">
-          Чтобы поправить догадку: откройте запись ниже. Название растения меняется в разделе
-          «Растения», место на плане — кнопкой «Переместить».
-        </p>
-      </div>
-
-      {result.items.length > 0 && (
-        <div className="list" style={{ maxHeight: '36dvh', overflowY: 'auto' }}>
-          {result.items.map((it, i) => (
-            <button
-              key={`${it.plantingId}-${i}`}
-              className="row"
-              onClick={() => {
-                onClose()
-                nav(`/planting/${it.plantingId}`)
-              }}
-            >
-              <span className="row-emoji">{it.status === 'matched' ? '✅' : '🌱'}</span>
-              <div className="row-body">
-                <div className="row-title">{it.plantName}</div>
-                <div className="row-sub">
-                  {it.status === 'matched' ? 'узнали рядом на плане' : 'добавили как новое'} · открыть запись
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <button
-        className="btn btn--secondary btn--block"
-        onClick={() => {
-          onClose()
-          nav('/plants')
-        }}
-      >
-        🌷 Открыть растения
-      </button>
-      <button className="btn btn--block" onClick={onClose}>
-        Готово
-      </button>
     </Sheet>
   )
 }

@@ -102,6 +102,9 @@ button {
   gap: 0;
   overflow: hidden;
   position: relative;
+  /* flex:1 у .page растягивал страницу на весь экран, и холст уезжал вниз
+     под нижнее меню. Фиксируем высоту ровно до меню — без двойного safe-area. */
+  flex: 0 0 auto;
   height: calc(100dvh - var(--nav-h) - var(--safe-b));
 }
 
@@ -239,7 +242,8 @@ button {
 .fab {
   position: absolute;
   right: 16px;
-  bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+  /* Страница плана заканчивается над нижним меню — отступ от её низа простой. */
+  bottom: 16px;
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -258,7 +262,7 @@ button {
 
 /* «+» над камерой: объекты участка добавляют реже, чем сажают */
 .fab--plus {
-  bottom: calc(var(--nav-h) + var(--safe-b) + 16px + 60px + 12px);
+  bottom: calc(16px + 60px + 12px);
   width: 50px;
   height: 50px;
   right: 21px;
@@ -515,7 +519,7 @@ textarea.input {
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: calc(var(--nav-h) + var(--safe-b) + 8px);
+  bottom: 8px;
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
