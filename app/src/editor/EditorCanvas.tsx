@@ -154,9 +154,15 @@ export function EditorCanvas({
   onShapeCommit,
 }: EditorCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [gesture, setGesture] = useState<Gesture>({ type: 'idle' });
+  const [gesture, setGestureState] = useState<Gesture>({ type: 'idle' });
   const gestureRef = useRef(gesture);
-  gestureRef.current = gesture;
+  // Реф обновляется СРАЗУ (не дожидаясь рендера): события жеста могут
+  // прийти в одной синхронной пачке, и обработчики должны видеть свежее
+  // состояние независимо от планировщика React.
+  const setGesture = useCallback((g: Gesture) => {
+    gestureRef.current = g;
+    setGestureState(g);
+  }, []);
   const pointers = useRef(new Map<number, Vec>());
 
   // Пропсы в ref — pointer-обработчики стабильны, но видят свежие значения
@@ -242,7 +248,7 @@ export function EditorCanvas({
       }
     }
     setGesture({ type: 'idle' });
-  }, []);
+  }, [setGesture]);
 
   // ─── Pointer events ───────────────────────────────────────────────────
 
@@ -250,7 +256,11 @@ export function EditorCanvas({
     (e: React.PointerEvent, itemId: string | null, handle?: HandleKind) => {
       const p = localPoint(e);
       pointers.current.set(e.pointerId, p);
-      svgRef.current?.setPointerCapture(e.pointerId);
+      try {
+        svgRef.current?.setPointerCapture(e.pointerId);
+      } catch {
+        // Синтетические события (тесты) не имеют живого pointerId
+      }
       const g = gestureRef.current;
       const isTouch = e.pointerType !== 'mouse';
       const { doc: d, selectedId: sel, viewport: vp } = propsRef.current;
@@ -292,7 +302,7 @@ export function EditorCanvas({
       });
       void vp;
     },
-    [localPoint],
+    [localPoint, setGesture],
   );
 
   const handlePointerMove = useCallback(
@@ -367,7 +377,7 @@ export function EditorCanvas({
       }
       pointers.current.set(e.pointerId, p);
     },
-    [localPoint, setViewportClamped, applyHandleMove],
+    [localPoint, setViewportClamped, applyHandleMove, setGesture],
   );
 
   const handlePointerUp = useCallback(
@@ -399,7 +409,7 @@ export function EditorCanvas({
       }
       finishGesture();
     },
-    [finishGesture],
+    [finishGesture, setGesture],
   );
 
   // ─── Живой документ: форма из активного жеста поверх doc ─────────────
