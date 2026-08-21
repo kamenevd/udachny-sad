@@ -36,7 +36,7 @@ const auth = await api('/api/collections/_superusers/auth-with-password', {
 const token = auth.token;
 
 const IMG = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
-const THUMBS = ['100x100', '800x0'];
+const THUMBS = ['100x100', '400x400', '800x0'];
 
 const ownerRule = 'owner = @request.auth.id';
 const ownerCreate = '@request.auth.id != "" && owner = @request.auth.id';

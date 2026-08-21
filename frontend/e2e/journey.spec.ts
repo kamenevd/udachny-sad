@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 
 /**
  * Полный путь нового садовода: регистрация → участок → план (дом, клумба) →
- * растение → посадка → журнал → история места → общий журнал → PWA-файлы.
+ * растение → посадка → журнал → история места → общий журнал → фотолента →
+ * PWA-файлы.
  * Работает против живого API; пользователь одноразовый.
  */
 
@@ -128,6 +129,21 @@ test('регистрация, план, посадка, журнал, истор
   await page.getByRole('button', { name: /Цветение/ }).click()
   await expect(page.getByText(/— цветение/)).toBeVisible()
   await expect(page.getByText(/— полив/)).toHaveCount(0)
+
+  // — Фотолента: оба снимка роз в сетке месяца
+  await page.getByRole('link', { name: 'Фото' }).click()
+  await expect(page).toHaveURL(/\/photos/)
+  await expect(page.getByText(/2 снимка/)).toBeVisible()
+  await expect(page.locator('.photo-cell')).toHaveCount(2)
+
+  // Полноэкранный просмотр: счётчик, листание, подпись ведёт к записи
+  await page.locator('.photo-cell').first().click()
+  await expect(page.getByText('1 из 2')).toBeVisible()
+  await expect(page.getByText(/Роза плетистая/)).toBeVisible()
+  await page.getByRole('button', { name: 'Следующий снимок' }).click()
+  await expect(page.getByText('2 из 2')).toBeVisible()
+  await page.getByRole('button', { name: /открыть запись/ }).click()
+  await expect(page).toHaveURL(/\/planting\//)
 
   // — Перезагрузка: сессия жива, попадаем на план
   await page.goto('/')

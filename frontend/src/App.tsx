@@ -9,6 +9,7 @@ import PlantsPage from './pages/PlantsPage'
 import PlantingPage from './pages/PlantingPage'
 import PlacePage from './pages/PlacePage'
 import JournalPage from './pages/JournalPage'
+import PhotosPage from './pages/PhotosPage'
 import MorePage from './pages/MorePage'
 import RoadmapPage from './pages/RoadmapPage'
 
@@ -28,6 +29,8 @@ function BottomNav() {
   const last = getLastPlot()
   const planTo = last ? `/plot/${last}` : '/plots'
   const planActive = pathname.startsWith('/plot')
+  // Фотолента — вкладка журнала, подсвечиваем тот же пункт меню.
+  const journalActive = pathname.startsWith('/journal') || pathname.startsWith('/photos')
   return (
     <nav className="bottom-nav">
       <NavLink to={planTo} className={planActive ? 'active' : ''}>
@@ -38,7 +41,7 @@ function BottomNav() {
         <span className="nav-emoji">🌷</span>
         Растения
       </NavLink>
-      <NavLink to="/journal">
+      <NavLink to="/journal" className={journalActive ? 'active' : ''}>
         <span className="nav-emoji">📖</span>
         Журнал
       </NavLink>
@@ -82,6 +85,7 @@ export default function App() {
         <Route path="/plot/:id" element={<Shell><PlanPage /></Shell>} />
         <Route path="/plants" element={<Shell><PlantsPage /></Shell>} />
         <Route path="/journal" element={<Shell><JournalPage /></Shell>} />
+        <Route path="/photos" element={<Shell><PhotosPage /></Shell>} />
         <Route path="/more" element={<Shell><MorePage /></Shell>} />
         <Route path="/roadmap" element={<Shell><RoadmapPage /></Shell>} />
         <Route path="/planting/:id" element={<Shell><PlantingPage /></Shell>} />

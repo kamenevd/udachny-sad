@@ -4,6 +4,7 @@ import { fileUrl, pb } from '../lib/pb'
 import type { Entry, EntryType } from '../lib/types'
 import { ENTRY_MENU, ENTRY_TYPES, plantEmoji } from '../lib/catalog'
 import { fmtDateShort, fmtMonthYear, groupBy } from '../lib/dates'
+import JournalTabs from '../ui/JournalTabs'
 
 const PER_PAGE = 60
 
@@ -44,6 +45,8 @@ export default function JournalPage() {
       <div className="top-bar">
         <h1>📖 Журнал</h1>
       </div>
+
+      <JournalTabs />
 
       <div className="chips">
         <button
