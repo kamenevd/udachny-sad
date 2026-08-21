@@ -202,7 +202,12 @@ export default function PlanCanvas() {
     if (g?.g === 'pan' && !g.moved) {
       const world = toWorld(toLocal(e))
       const { mode: m } = stateRef.current
-      if (m.m === 'add-feature' || m.m === 'add-planting' || m.m === 'move-planting') {
+      if (
+        m.m === 'add-feature' ||
+        m.m === 'add-planting' ||
+        m.m === 'quick-plant' ||
+        m.m === 'move-planting'
+      ) {
         placeAt(world)
         return
       }

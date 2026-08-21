@@ -61,8 +61,48 @@ test('регистрация, план, посадка, журнал, истор
   // — Быстрый полив с плана
   await page.getByRole('button', { name: /Полил/ }).click()
   await expect(page.getByText(/Полив записан/)).toBeVisible()
+  await page.getByRole('button', { name: 'Закрыть' }).click()
 
-  // — Журнал посадки: запись «Цветение»
+  // — Посадка одним касанием: камера → название → касание плана
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64',
+  )
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Сфотографировать и посадить' }).click()
+  await (await chooser).setFiles({ name: 'roza.png', mimeType: 'image/png', buffer: pixel })
+  await expect(page.getByRole('heading', { name: 'Что посадили?' })).toBeVisible()
+  await expect(page.getByAltText('Снимок растения')).toBeVisible()
+  await page.getByLabel('Название').fill('Роза плетистая')
+  await page.getByRole('button', { name: /Кустарник/ }).click()
+  await page.getByRole('button', { name: /Выбрать место на плане/ }).click()
+  await expect(page.getByText(/куда посадили «Роза плетистая»/)).toBeVisible()
+  await tapPlan(page, 0.5, 0.25)
+  await expect(page.getByText(/«Роза плетистая» растёт на плане/)).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('heading', { name: /Роза плетистая/ })).toBeVisible()
+
+  // Первая запись в журнале — с фото
+  await page.getByRole('button', { name: /Журнал/ }).click()
+  await expect(page).toHaveURL(/\/planting\//)
+  await expect(page.getByText('Посадили — первое фото.')).toBeVisible()
+  await expect(page.locator('.entry-photos img')).toHaveCount(1)
+  await page.getByRole('button', { name: 'Назад' }).click()
+
+  // Повтор с тем же названием — предлагает уже записанное растение, без дубля
+  const chooser2 = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Сфотографировать и посадить' }).click()
+  await (await chooser2).setFiles({ name: 'roza2.png', mimeType: 'image/png', buffer: pixel })
+  await page.getByLabel('Название').fill('Роза')
+  await page.getByRole('button', { name: /Роза плетистая/ }).click()
+  await expect(page.getByText(/уже в списке — новая посадка/)).toBeVisible()
+  await page.getByRole('button', { name: /Выбрать место на плане/ }).click()
+  await tapPlan(page, 0.2, 0.25)
+  await expect(page.getByText(/«Роза плетистая» растёт на плане/)).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: 'Закрыть' }).click()
+
+  // — Журнал посадки: запись «Цветение» (сначала выбрать гортензию на плане)
+  await tapPlan(page, 0.68, 0.5)
+  await expect(page.getByRole('heading', { name: /Гортензия/ })).toBeVisible()
   await page.getByRole('button', { name: /Журнал/ }).click()
   await expect(page).toHaveURL(/\/planting\//)
   await page.getByRole('button', { name: /Запись в журнал/ }).click()

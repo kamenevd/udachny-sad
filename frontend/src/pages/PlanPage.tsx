@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { pb, pbError, setLastPlot } from '../lib/pb'
 import type { Plant } from '../lib/types'
@@ -9,14 +9,17 @@ import Sheet from '../ui/Sheet'
 import { toast } from '../ui/toast'
 import { usePlan } from '../plan/store'
 import PlanCanvas from '../plan/PlanCanvas'
+import QuickPlantSheet from '../plan/QuickPlantSheet'
 
 export default function PlanPage() {
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
-  const { plot, features, plantings, loading, sel, mode, load } = usePlan()
+  const { plot, features, plantings, loading, saving, sel, mode, load } = usePlan()
   const [addOpen, setAddOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [renameId, setRenameId] = useState<string | null>(null)
+  const [quickPhoto, setQuickPhoto] = useState<File | null>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -72,14 +75,46 @@ export default function PlanPage() {
       {mode.m === 'add-planting' && (
         <ModeHint text={`Коснитесь плана — куда посадить «${mode.plantName}»`} />
       )}
+      {mode.m === 'quick-plant' && (
+        <ModeHint text={`Коснитесь плана — куда посадили «${mode.plantName}»`} />
+      )}
       {mode.m === 'move-planting' && <ModeHint text="Коснитесь нового места на плане" />}
 
-      {/* Кнопка добавления */}
-      {showFab && (
-        <button className="fab" aria-label="Добавить" onClick={() => setAddOpen(true)}>
-          +
-        </button>
+      {/* Сохранение «посадки одним касанием»: фото едет на сервер */}
+      {saving && (
+        <div className="plan-saving">
+          <div className="spinner" />
+          <span>Сажаем…</span>
+        </div>
       )}
+
+      {/* Кнопки: камера — главная, «+» — объекты участка */}
+      {showFab && (
+        <>
+          <button className="fab fab--plus" aria-label="Добавить" onClick={() => setAddOpen(true)}>
+            +
+          </button>
+          <button
+            className="fab"
+            aria-label="Сфотографировать и посадить"
+            onClick={() => cameraRef.current?.click()}
+          >
+            📷
+          </button>
+        </>
+      )}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) setQuickPhoto(f)
+          e.target.value = ''
+        }}
+      />
 
       {/* Панели выбранного */}
       {mode.m === 'edit' && <EditPanel />}
@@ -96,13 +131,22 @@ export default function PlanPage() {
       {addOpen && (
         <Sheet title="Добавить на план" onClose={() => setAddOpen(false)}>
           <button
+            className="btn btn--block"
+            onClick={() => {
+              setAddOpen(false)
+              cameraRef.current?.click()
+            }}
+          >
+            📷 Сфотографировать и посадить
+          </button>
+          <button
             className="btn btn--secondary btn--block"
             onClick={() => {
               setAddOpen(false)
               setPickerOpen(true)
             }}
           >
-            🌷 Посадить растение
+            🌷 Посадить из списка
           </button>
           <div className="section-title">Объекты участка</div>
           <div className="etype-grid">
@@ -123,6 +167,8 @@ export default function PlanPage() {
       )}
 
       {pickerOpen && <PlantPicker onClose={() => setPickerOpen(false)} />}
+
+      {quickPhoto && <QuickPlantSheet photo={quickPhoto} onClose={() => setQuickPhoto(null)} />}
 
       {renameId && <RenameSheet featureId={renameId} onClose={() => setRenameId(null)} />}
     </div>

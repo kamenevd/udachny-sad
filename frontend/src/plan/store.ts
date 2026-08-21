@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { pb, pbError } from '../lib/pb'
-import type { Feature, FeatureKind, Planting, Plot } from '../lib/types'
+import type { Feature, FeatureKind, Plant, Planting, Plot } from '../lib/types'
 import type { Pt, Shape } from '../lib/geometry'
 import { hitShape, keepInside, snapShape } from '../lib/geometry'
 import { FEATURE_KINDS } from '../lib/catalog'
@@ -15,6 +15,17 @@ export type Mode =
   | { m: 'add-feature'; kind: FeatureKind }
   | { m: 'add-planting'; plantId: string; plantName: string }
   | { m: 'move-planting'; plantingId: string }
+  | { m: 'quick-plant'; photo: File } & QuickPlant
+
+/** «Посадка одним касанием»: фото уже снято, осталось коснуться плана. */
+export interface QuickPlant {
+  /** Пустая строка — создать новое растение. */
+  plantId: string
+  plantName: string
+  ptype: string
+  /** У существующего растения уже есть фото — не перезаписываем. */
+  plantHasPhoto: boolean
+}
 
 /** К чему привязывается посадка при размещении: приоритет клумба > изгородь > газон. */
 const ANCHOR_KINDS: FeatureKind[] = ['bed', 'hedge', 'lawn']
@@ -33,6 +44,8 @@ interface PlanState {
   features: Feature[]
   plantings: Planting[]
   loading: boolean
+  /** Идёт сохранение «посадки одним касанием» (фото грузится на сервер). */
+  saving: boolean
   sel: Sel
   mode: Mode
 
@@ -44,6 +57,7 @@ interface PlanState {
   cancelEdit: () => void
   startAddFeature: (kind: FeatureKind) => void
   startAddPlanting: (plantId: string, plantName: string) => void
+  startQuickPlant: (photo: File, q: QuickPlant) => void
   startMovePlanting: (plantingId: string) => void
   cancelMode: () => void
   placeAt: (p: Pt) => Promise<void>
@@ -57,6 +71,7 @@ export const usePlan = create<PlanState>((set, get) => ({
   features: [],
   plantings: [],
   loading: true,
+  saving: false,
   sel: null,
   mode: { m: 'view' },
 
@@ -118,6 +133,8 @@ export const usePlan = create<PlanState>((set, get) => ({
   startAddPlanting: (plantId, plantName) =>
     set({ mode: { m: 'add-planting', plantId, plantName }, sel: null }),
 
+  startQuickPlant: (photo, q) => set({ mode: { m: 'quick-plant', photo, ...q }, sel: null }),
+
   startMovePlanting: (plantingId) => set({ mode: { m: 'move-planting', plantingId }, sel: null }),
 
   cancelMode: () => set({ mode: { m: 'view' } }),
@@ -173,6 +190,63 @@ export const usePlan = create<PlanState>((set, get) => ({
         toast(pbError(e))
         set({ mode: { m: 'view' } })
       }
+      return
+    }
+
+    if (mode.m === 'quick-plant') {
+      const feature = findAnchor(features, p)
+      set({ saving: true })
+      let rec: Planting
+      try {
+        let plantId = mode.plantId
+        if (!plantId) {
+          const fd = new FormData()
+          fd.set('name', mode.plantName)
+          fd.set('ptype', mode.ptype)
+          fd.set('owner', pb.authStore.record?.id ?? '')
+          fd.set('photo', mode.photo)
+          const plant = await pb.collection('plants').create<Plant>(fd)
+          plantId = plant.id
+        } else if (!mode.plantHasPhoto) {
+          const fd = new FormData()
+          fd.set('photo', mode.photo)
+          await pb.collection('plants').update(plantId, fd)
+        }
+        rec = await pb.collection('plantings').create<Planting>(
+          {
+            plot: plotId,
+            plant: plantId,
+            feature,
+            x: Math.round(p.x * 100) / 100,
+            y: Math.round(p.y * 100) / 100,
+            planted_on: todayISO(),
+            status: 'growing',
+          },
+          { expand: 'plant' },
+        )
+      } catch (e) {
+        toast(pbError(e))
+        set({ mode: { m: 'view' }, saving: false })
+        return
+      }
+      set({
+        plantings: [...get().plantings, rec],
+        mode: { m: 'view' },
+        sel: { type: 'planting', id: rec.id },
+      })
+      try {
+        const fd = new FormData()
+        fd.set('planting', rec.id)
+        fd.set('etype', 'note')
+        fd.set('happened_on', todayISO())
+        fd.set('note', 'Посадили — первое фото.')
+        fd.append('photos', mode.photo)
+        await pb.collection('entries').create(fd)
+        toast(`«${mode.plantName}» растёт на плане, фото — в журнале 📖`)
+      } catch {
+        toast('Растение на плане, но фото в журнал не попало. Попробуйте добавить из журнала.')
+      }
+      set({ saving: false })
       return
     }
 
