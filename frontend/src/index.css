@@ -1153,7 +1153,7 @@ textarea.input {
   color: var(--amber);
 }
 
-.roadmap-badge--later {
+.roadmap-badge--planned {
   background: var(--surface-2);
   color: var(--ink-2);
 }
@@ -1165,6 +1165,20 @@ textarea.input {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+}
+
+.roadmap-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.roadmap-date {
+  font-size: 14px;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 
 .roadmap-emoji {
