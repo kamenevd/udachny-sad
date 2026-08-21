@@ -860,3 +860,75 @@ textarea.input {
   font-weight: 700;
   margin-top: 10px;
 }
+
+/* ---------- «Что будет» (план сада) ---------- */
+
+.roadmap-intro {
+  font-size: 18px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.roadmap-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roadmap-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 21px;
+  margin-top: 6px;
+}
+
+.roadmap-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.roadmap-badge--done {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.roadmap-badge--doing {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.roadmap-badge--later {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.roadmap-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.roadmap-emoji {
+  font-size: 28px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.roadmap-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.roadmap-lines {
+  font-size: 16px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}

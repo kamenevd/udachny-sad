@@ -47,6 +47,13 @@ export default function MorePage() {
             <div className="row-sub">Добавить или изменить участок</div>
           </div>
         </Link>
+        <Link className="row" to="/roadmap">
+          <span className="row-emoji">🌱</span>
+          <div className="row-body">
+            <div className="row-title">Что будет</div>
+            <div className="row-sub">Что уже есть, что делаем, что потом</div>
+          </div>
+        </Link>
         {canInstall && (
           <button
             className="row"

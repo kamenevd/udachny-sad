@@ -10,6 +10,7 @@ import PlantingPage from './pages/PlantingPage'
 import PlacePage from './pages/PlacePage'
 import JournalPage from './pages/JournalPage'
 import MorePage from './pages/MorePage'
+import RoadmapPage from './pages/RoadmapPage'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { valid } = useAuth()
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="/plants" element={<Shell><PlantsPage /></Shell>} />
         <Route path="/journal" element={<Shell><JournalPage /></Shell>} />
         <Route path="/more" element={<Shell><MorePage /></Shell>} />
+        <Route path="/roadmap" element={<Shell><RoadmapPage /></Shell>} />
         <Route path="/planting/:id" element={<Shell><PlantingPage /></Shell>} />
         <Route path="/place/:id" element={<Shell><PlacePage /></Shell>} />
         <Route path="*" element={<Navigate to="/" replace />} />
