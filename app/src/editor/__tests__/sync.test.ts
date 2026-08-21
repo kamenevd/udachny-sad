@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { diffDocs, EditorSync, type SyncTransport } from '../sync';
-import { EMPTY_DOC, type EditorDoc, type EditorObject, type EditorZone } from '../model';
+import { EMPTY_DOC, type EditorObject, type EditorZone } from '../model';
 import { addItem, updateItem, removeItem } from '../history';
 
 function makeHouse(id: string, cx = 5): EditorObject {
@@ -86,7 +86,7 @@ describe('EditorSync', () => {
     expect(t.updateObject).toHaveBeenCalledTimes(1);
     expect(vi.mocked(t.updateObject).mock.calls[0][0].id).toBe('srv1');
     expect(remaps).toEqual([['tmp_1', 'srv1']]);
-    expect(statuses.at(-1)).toBe('saved');
+    expect(statuses[statuses.length - 1]).toBe('saved');
     expect(sync.realId('tmp_1')).toBe('srv1');
   });
 
@@ -140,11 +140,11 @@ describe('EditorSync', () => {
 
     sync.push(addItem(EMPTY_DOC, makeHouse('tmp_1')));
     expect(await sync.flush()).toBe(false);
-    expect(statuses.at(-1)).toBe('error');
+    expect(statuses[statuses.length - 1]).toBe('error');
 
     sync.retry();
     expect(await sync.flush()).toBe(true);
-    expect(statuses.at(-1)).toBe('saved');
+    expect(statuses[statuses.length - 1]).toBe('saved');
     expect(sync.realId('tmp_1')).toBe('srvB');
   });
 

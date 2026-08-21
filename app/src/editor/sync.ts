@@ -169,7 +169,9 @@ export class EditorSync {
           op.kind === 'object'
             ? await t.createObject(this.opts.gardenId, op.item as EditorObject)
             : await t.createZone(this.opts.gardenId, op.item as EditorZone);
-        if (isTempId(tempId)) {
+        // Ремапим не только tmp_N: undo после удаления воссоздаёт запись
+        // со старым (уже несуществующим) id — сервер выдаёт новый
+        if (realId !== tempId) {
           this.idMap.set(tempId, realId);
           this.opts.onIdRemap(tempId, realId);
         }

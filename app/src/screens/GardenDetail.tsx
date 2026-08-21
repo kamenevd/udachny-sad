@@ -11,7 +11,6 @@ import {
   moistureZones as moistureZonesApi,
   plantings as plantingsApi,
   type Garden,
-  type SchemaObject,
 } from '../lib/pb';
 import { getActive, type PlantingWithPlant } from '../lib/pbPlantings';
 import { usePbCollection } from '../hooks/usePbCollection';
@@ -32,17 +31,10 @@ import { centroidOf, type CanvasSearchItem } from '../hooks/useCanvasSearch';
 import { pointInPolygon, type LightCondition } from '../lib/compositionContext';
 import type { SchemaObjectForNumber } from '../components/canvas/ObjectNumbers';
 import { usePanZoom } from '../components/canvas/usePanZoom';
-import { EditorToolbar, objectTypeInfo } from '../components/canvas/EditorToolbar';
-import type { EditorMode } from '../components/canvas/EditorToolbar';
-import { useDrawObject } from '../components/canvas/useDrawObject';
 import { Explication } from '../components/Explication';
 import { ObjectSheet } from '../components/ObjectSheet';
 import { formatRuDate } from '../components/PlantingForm';
-import { ZONE_CONDITIONS, zoneConditionLabel } from '../components/canvas/zoneConditions';
 import type { ZoneLayerKind } from '../components/canvas/zoneConditions';
-import { useDrawZone } from '../components/canvas/useDrawZone';
-import { Modal } from '../components/Modal';
-import { SkipLink } from '../components/SkipLink';
 import { ExportPng } from '../components/canvas/ExportPng';
 import { ExportReport } from '../components/canvas/ExportReport';
 import '../utils/printStyles.css';
@@ -57,6 +49,9 @@ import { MONTHS_RU_IN } from '../types/plant';
 /** Konva (~357KB) грузится лениво — только когда экран реально показывает канву (задача 17.3) */
 const GardenCanvasStage = lazy(() => import('../components/canvas/GardenCanvasStage'));
 
+/** Рисование по точкам удалено (EDITOR.md) — канва получает инертный стейт */
+const INERT_DRAW = { draftPoints: [] as number[][], handleStageTap: () => {} };
+
 // ─── Props ───────────────────────────────────────────────────────────
 
 interface GardenDetailProps {
@@ -69,6 +64,8 @@ interface GardenDetailProps {
   onOpenPlaceHistory?: (schemaObjectId: string) => void;
   /** Открыть годовой отчёт участка (экран SeasonReport, задача 33.1) */
   onOpenSeasonReport?: () => void;
+  /** Открыть редактор плана (EDITOR.md) — заменяет режимы «+ Объект» и «Зоны» */
+  onEditPlan?: () => void;
 }
 
 // ─── Константы ───────────────────────────────────────────────────────
@@ -133,7 +130,7 @@ function usePatternImages(): Record<string, HTMLImageElement> {
 
 // ─── Компонент ───────────────────────────────────────────────────────
 
-export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onOpenPlaceHistory, onOpenSeasonReport }: GardenDetailProps) {
+export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onOpenPlaceHistory, onOpenSeasonReport, onEditPlan }: GardenDetailProps) {
   // ─── Данные из PocketBase (задача C.3) ─────────────────────────────
   const [garden, setGarden] = useState<Garden | null | undefined>(undefined);
   useEffect(() => {
@@ -225,37 +222,16 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
   const mx = useCallback((m: number) => m * scale + offsetX, [scale, offsetX]);
   const my = useCallback((m: number) => m * scale + offsetY, [scale, offsetY]);
 
-  // ─── Режим редактора (задача 3.2) ─────────────────────────────────
-  const [editorMode, setEditorMode] = useState<EditorMode>('view');
-  const [selectedType, setSelectedType] = useState('flowerbed');
-
-  // ─── Pan/zoom Stage (задача 3.1) ──────────────────────────────────
-  // В режимах рисования pan/zoom выключен — тапы уходят в рисование
+  // ─── Pan/zoom Stage (задача 3.1) — просмотр всегда активен;
+  // редактирование объектов и зон живёт в PlotEditor (EDITOR.md)
   const { stageProps, zoom, focusOn } = usePanZoom({
     minZoom: 0.5,
     maxZoom: 8,
-    enabled: editorMode === 'view',
+    enabled: true,
   });
 
-  // ─── Выделение и перемещение объектов (задача 3.4) ────────────────
+  // ─── Выделение объектов (карточка места, история, посадки) ────────
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
-
-  const handleObjectMove = useCallback(
-    async (obj: SchemaObjectData, dxM: number, dyM: number) => {
-      const points = obj.geometry.points.map(([x, y]) => [
-        Math.round((x + dxM) * 100) / 100,
-        Math.round((y + dyM) * 100) / 100,
-      ]);
-      try {
-        await schemaObjectsApi.update(obj.id, {
-          geometry: { type: obj.geometry.type, points },
-        });
-      } catch {
-        // Конва уже сброшена в исходное положение — объект просто вернётся
-      }
-    },
-    [],
-  );
 
   // Тап по пустому месту листа — снять выделение
   const handleStageClick = useCallback(
@@ -348,78 +324,6 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
       geometry: z.geometry,
     }));
   }, [zoneLayer, lightZonesData, moistureZonesData]);
-
-  // ─── Рисование и удаление зон (задача 3.7) ────────────────────────
-  const zoneApiFor = (layer: ZoneLayerKind) => (layer === 'light' ? lightZonesApi : moistureZonesApi);
-  const [zoneCondition, setZoneCondition] = useState<string | null>(null);
-  const [zoneError, setZoneError] = useState('');
-  const [deleteZoneId, setDeleteZoneId] = useState<string | null>(null);
-  const [zoneBusy, setZoneBusy] = useState(false);
-
-  // ─── Рисование объектов (задача 3.3) ──────────────────────────────
-  const [drawError, setDrawError] = useState('');
-
-  // Позиция на Stage (после трансформа) → метры листа
-  const toMeters = useCallback(
-    (p: { x: number; y: number }) => ({
-      x: (p.x - offsetX) / scale,
-      y: (p.y - offsetY) / scale,
-    }),
-    [offsetX, offsetY, scale],
-  );
-
-  const drawKind = objectTypeInfo(selectedType).geometry;
-
-  const draw = useDrawObject({
-    active: editorMode === 'addObject',
-    kind: drawKind,
-    toMeters,
-    onCommit: async (geometry) => {
-      setDrawError('');
-      try {
-        await schemaObjectsApi.create({
-          gardenId,
-          type: selectedType as SchemaObject['type'],
-          geometry: { type: geometry.type, points: geometry.points },
-        });
-      } catch {
-        setDrawError('Не получилось сохранить объект. Попробуйте ещё раз.');
-        throw new Error('save failed');
-      }
-    },
-  });
-
-  const drawZone = useDrawZone({
-    active: editorMode === 'zones' && zoneLayer !== null && zoneCondition !== null,
-    toMeters,
-    onCommit: async (points) => {
-      if (!zoneLayer || !zoneCondition) return;
-      setZoneError('');
-      try {
-        await zoneApiFor(zoneLayer).create({
-          gardenId,
-          condition: zoneCondition as never,
-          geometry: { points },
-        });
-      } catch {
-        setZoneError('Не получилось сохранить зону. Попробуйте ещё раз.');
-        throw new Error('save failed');
-      }
-    },
-  });
-
-  const handleZoneRemove = async () => {
-    if (!deleteZoneId || !zoneLayer) return;
-    setZoneBusy(true);
-    try {
-      await zoneApiFor(zoneLayer).remove(deleteZoneId);
-    } catch {
-      setZoneError('Не получилось удалить зону. Попробуйте ещё раз.');
-    } finally {
-      setZoneBusy(false);
-      setDeleteZoneId(null);
-    }
-  };
 
   // ─── Паттерны ─────────────────────────────────────────────────────
   const patternImages = usePatternImages();
@@ -625,23 +529,19 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
       {/* ═══ Канва (§3.1, §3.2) — ленивый чанк (задача 17.3) ═══ */}
       <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden">
         {/* Поиск объектов по схеме с подсветкой (задача 34.4) */}
-        {editorMode === 'view' && (
-          <div className="absolute left-3 top-3 z-20">
-            <SearchOnCanvas
-              items={items}
-              selectedNumber={selectedNumber}
-              onHighlight={setSelectedNumber}
-            />
-          </div>
-        )}
+        <div className="absolute left-3 top-3 z-20">
+          <SearchOnCanvas
+            items={items}
+            selectedNumber={selectedNumber}
+            onHighlight={setSelectedNumber}
+          />
+        </div>
 
         {/* Командная палитра Cmd+K + FAB (задача H.1) */}
-        {editorMode === 'view' && (
-          <CommandPalette items={searchItems} onSelect={handlePaletteSelect} />
-        )}
+        <CommandPalette items={searchItems} onSelect={handlePaletteSelect} />
 
         {/* Сезонность: кнопка + выпадающий календарь (PLAN12 задача 6) */}
-        {editorMode === 'view' && (
+        {(
           <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
             <button
               type="button"
@@ -685,7 +585,7 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
         )}
 
         {/* Пустая схема: с чего начать (PLAN12 задача 13) */}
-        {editorMode === 'view' && objectDocs !== undefined && objects.length === 0 && (
+        {objectDocs !== undefined && objects.length === 0 && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
             <div className="pointer-events-auto max-w-xs rounded-[10px] border-2 border-ink bg-paper p-[5px] text-center shadow-blank">
               <div className="rounded-[6px] border border-ink p-4">
@@ -697,26 +597,15 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
                   Начните с домика — от него удобно отмерять всё остальное.
                   Потом добавьте клумбу или композицию и посадите растения.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedType('building');
-                    setEditorMode('addObject');
-                  }}
-                  className="mb-2 h-[44px] w-full rounded-lg border-2 border-ink bg-ink px-3 font-poster text-[14px] font-semibold uppercase text-paper"
-                >
-                  🏠 Нарисовать домик
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedType('flowerbed');
-                    setEditorMode('addObject');
-                  }}
-                  className="h-[44px] w-full rounded-lg border-2 border-ink bg-surface px-3 font-poster text-[14px] font-semibold uppercase text-ink"
-                >
-                  🌸 Добавить клумбу
-                </button>
+                {onEditPlan && (
+                  <button
+                    type="button"
+                    onClick={onEditPlan}
+                    className="h-[44px] w-full rounded-lg border-2 border-ink bg-ink px-3 font-poster text-[14px] font-semibold uppercase text-paper"
+                  >
+                    ✏️ Открыть редактор плана
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -735,10 +624,10 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
               canvasWidth={canvasSize.width}
               canvasHeight={canvasSize.height}
               stageProps={stageProps}
-              editorMode={editorMode}
-              draw={draw}
-              drawZone={drawZone}
-              drawKind={drawKind}
+              editorMode="view"
+              draw={INERT_DRAW}
+              drawZone={INERT_DRAW}
+              drawKind="polygon"
               handleStageClick={handleStageClick}
               patternImages={patternImages}
               offsetX={offsetX}
@@ -752,15 +641,10 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
               isObjectSelected={isObjectSelected}
               selectedObjectId={selectedObjectId}
               onSelectObject={setSelectedObjectId}
-              handleObjectMove={(obj, dxM, dyM) => void handleObjectMove(obj, dxM, dyM)}
               zoneLayer={zoneLayer}
               visibleZones={visibleZones}
-              deleteZoneId={deleteZoneId}
-              onZoneTap={
-                editorMode === 'zones' && zoneCondition === null
-                  ? (id) => setDeleteZoneId(id)
-                  : undefined
-              }
+              deleteZoneId={null}
+              onZoneTap={undefined}
               objectsForNumbers={objectsForNumbers}
               groupMap={groupMap}
               selectedNumber={selectedNumber}
@@ -773,146 +657,6 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
           </Suspense>
         )}
       </div>
-
-      {/* ═══ Управление рисованием (задача 3.3) ═══ */}
-      {editorMode === 'addObject' && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[130px] z-10 flex flex-col items-center gap-2 px-4">
-          {drawError && (
-            <p className="pointer-events-auto rounded-[8px] border-2 border-red bg-paper px-3 py-1 font-mono text-[14px] text-red">
-              {drawError}
-            </p>
-          )}
-          {draw.draftPoints.length > 0 && (
-            <div className="pointer-events-auto flex gap-2">
-              {draw.canFinish && (
-                <button
-                  type="button"
-                  onClick={draw.finish}
-                  disabled={draw.saving}
-                  className="rounded-[8px] border-2 border-ink bg-ink px-4 py-2 font-poster text-[15px] font-semibold uppercase text-paper"
-                >
-                  {draw.saving ? 'Сохраняем…' : 'Готово'}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={draw.cancel}
-                disabled={draw.saving}
-                className="rounded-[8px] border-2 border-ink bg-paper px-4 py-2 font-poster text-[15px] font-semibold uppercase text-ink"
-              >
-                Отмена
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══ Переключатель слоя зон (задача 3.6) + рисование (задача 3.7) ═══ */}
-      {editorMode === 'zones' && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[130px] z-10 flex flex-col items-center gap-2 px-4">
-          {zoneError && (
-            <p className="pointer-events-auto rounded-[8px] border-2 border-red bg-paper px-3 py-1 font-mono text-[14px] text-red">
-              {zoneError}
-            </p>
-          )}
-          {zoneLayer && (
-            <div className="pointer-events-auto flex gap-1 rounded-[8px] border-2 border-ink bg-paper p-1">
-              {ZONE_CONDITIONS[zoneLayer].map((c) => (
-                <button
-                  key={c.condition}
-                  type="button"
-                  onClick={() =>
-                    setZoneCondition(
-                      zoneCondition === c.condition ? null : c.condition,
-                    )
-                  }
-                  className={[
-                    'rounded-[6px] px-3 py-1.5 font-poster text-[14px] font-semibold uppercase',
-                    zoneCondition === c.condition
-                      ? 'bg-ink text-paper'
-                      : 'text-ink hover:bg-ink/10',
-                  ].join(' ')}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {zoneLayer && (
-            <p className="pointer-events-none font-mono text-[12px] text-ink-muted">
-              {zoneCondition
-                ? 'Тапайте по листу — рисуйте зону'
-                : 'Выберите условие, чтобы рисовать; тап по зоне — удалить'}
-            </p>
-          )}
-          {drawZone.draftPoints.length > 0 && (
-            <div className="pointer-events-auto flex gap-2">
-              {drawZone.canFinish && (
-                <button
-                  type="button"
-                  onClick={drawZone.finish}
-                  disabled={drawZone.saving}
-                  className="rounded-[8px] border-2 border-ink bg-ink px-4 py-2 font-poster text-[15px] font-semibold uppercase text-paper"
-                >
-                  {drawZone.saving ? 'Сохраняем…' : 'Готово'}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={drawZone.cancel}
-                disabled={drawZone.saving}
-                className="rounded-[8px] border-2 border-ink bg-paper px-4 py-2 font-poster text-[15px] font-semibold uppercase text-ink"
-              >
-                Отмена
-              </button>
-            </div>
-          )}
-          <div className="pointer-events-auto flex gap-1 rounded-[8px] border-2 border-ink bg-paper p-1">
-            {(
-              [
-                { value: 'light' as const, label: 'Свет' },
-                { value: 'moisture' as const, label: 'Влага' },
-                { value: null, label: 'Выкл' },
-              ] as { value: ZoneLayerKind | null; label: string }[]
-            ).map((opt) => (
-              <button
-                key={opt.label}
-                type="button"
-                onClick={() => {
-                  setZoneLayer(opt.value);
-                  setZoneCondition(null);
-                }}
-                className={[
-                  'rounded-[6px] px-3 py-1.5 font-poster text-[14px] font-semibold uppercase',
-                  zoneLayer === opt.value
-                    ? 'bg-ink text-paper'
-                    : 'text-ink hover:bg-ink/10',
-                ].join(' ')}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ Подтверждение удаления зоны (задача 3.7) ═══ */}
-      <Modal
-        open={deleteZoneId !== null}
-        title="Удалить зону?"
-        confirmVariant="danger"
-        confirmText={zoneBusy ? 'Удаляем…' : 'Удалить'}
-        cancelText="Отмена"
-        onConfirm={() => void handleZoneRemove()}
-        onCancel={() => setDeleteZoneId(null)}
-      >
-        {(() => {
-          const zone = visibleZones.find((z) => z.id === deleteZoneId);
-          return zone
-            ? `Зона «${zoneConditionLabel(zone.condition)}» будет удалена со схемы.`
-            : 'Зона будет удалена со схемы.';
-        })()}
-      </Modal>
 
       {/* ═══ Список посадок места (задача 4.3) ═══ */}
       {plantingListObjectId && (
@@ -974,14 +718,54 @@ export function GardenDetail({ gardenId, gardenName, onBack, onOpenPlanting, onO
         lightConditions={selectedLightConditions}
       />
 
-      {/* ═══ Панель инструментов редактора (задача 3.2) ═══ */}
-      <EditorToolbar
-        mode={editorMode}
-        onModeChange={setEditorMode}
-        selectedType={selectedType}
-        onTypeChange={setSelectedType}
-        onOpenWizard={() => setShowWizard(true)}
-      />
+      {/* ═══ Нижняя панель: редактор плана, слои зон, подбор растений ═══ */}
+      <div className="shrink-0 border-t-2 border-ink bg-paper px-3 py-2">
+        <div className="mx-auto flex max-w-2xl flex-col gap-2">
+          <div className="flex gap-2">
+            {onEditPlan && (
+              <button
+                type="button"
+                onClick={onEditPlan}
+                data-testid="open-plot-editor"
+                className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-[8px] border-2 border-ink bg-ink px-3 font-poster text-[15px] font-semibold uppercase tracking-[0.03em] text-paper transition-colors hover:opacity-90"
+              >
+                <span aria-hidden="true">✏️</span>
+                Редактировать план
+              </button>
+            )}
+            {/* Слои зон — просмотр (редактирование зон света в редакторе) */}
+            {(
+              [
+                { value: 'light' as const, label: 'Свет' },
+                { value: 'moisture' as const, label: 'Влага' },
+              ] as { value: ZoneLayerKind; label: string }[]
+            ).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setZoneLayer(zoneLayer === opt.value ? null : opt.value)}
+                className={[
+                  'min-h-[48px] shrink-0 rounded-[8px] border-2 border-ink px-3',
+                  'font-poster text-[13px] font-semibold uppercase transition-colors',
+                  zoneLayer === opt.value
+                    ? 'bg-ink text-paper'
+                    : 'bg-surface text-ink hover:bg-ink/10',
+                ].join(' ')}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowWizard(true)}
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[8px] border-2 border-ink bg-surface font-poster text-[14px] font-semibold uppercase tracking-[0.03em] text-ink transition-colors hover:bg-ink/10"
+          >
+            <span aria-hidden="true">🧭</span>
+            Подобрать растения
+          </button>
+        </div>
+      </div>
 
       {/* Мастер подбора растений (PLAN12 задача 8) */}
       <PlantWizard open={showWizard} onClose={() => setShowWizard(false)} />

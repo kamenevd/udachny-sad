@@ -93,7 +93,8 @@ export interface GardenCanvasStageProps {
   isObjectSelected: (obj: SchemaObjectData) => boolean;
   selectedObjectId: string | null;
   onSelectObject: (id: string) => void;
-  handleObjectMove: (obj: SchemaObjectData, dxM: number, dyM: number) => void;
+  /** Не передан — перетаскивание объектов выключено (правки живут в PlotEditor) */
+  handleObjectMove?: (obj: SchemaObjectData, dxM: number, dyM: number) => void;
   zoneLayer: ZoneLayerKind | null;
   visibleZones: { id: string; condition: string; geometry: { points: number[][] } }[];
   deleteZoneId: string | null;
@@ -251,7 +252,7 @@ const GardenCanvasStage = forwardRef<Konva.Stage, GardenCanvasStageProps>(functi
             interactive={editorMode === 'view'}
             individuallySelected={selectedObjectId === obj.id}
             onSelect={() => onSelectObject(obj.id)}
-            onMove={(dxM, dyM) => handleObjectMove(obj, dxM, dyM)}
+            onMove={handleObjectMove ? (dxM, dyM) => handleObjectMove(obj, dxM, dyM) : undefined}
             bloomMonth={bloomMonth}
             bloom={bloomStates?.get(obj.id)}
           />
@@ -360,7 +361,8 @@ interface ObjectShapeProps {
   interactive: boolean;
   individuallySelected: boolean;
   onSelect: () => void;
-  onMove: (dxM: number, dyM: number) => void;
+  /** Не передан — объект не перетаскивается */
+  onMove?: (dxM: number, dyM: number) => void;
   /** PLAN12 задача 6: месяц сезонности (null — режим выключен) */
   bloomMonth?: number | null;
   bloom?: ObjectBloomState;
@@ -405,7 +407,7 @@ function ObjectShape({
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const dxM = e.target.x() / scale; // Пиксели в метры
     const dyM = e.target.y() / scale;
-    onMove(dxM, dyM);
+    onMove?.(dxM, dyM);
     e.target.position({ x: 0, y: 0 }); // Сброс позиции: React пересчитает геометрию
   };
 
@@ -413,7 +415,7 @@ function ObjectShape({
   const groupProps = {
     onClick: handleSelect,
     onTap: handleSelect,
-    draggable: interactive && individuallySelected,
+    draggable: interactive && individuallySelected && !!onMove,
     onDragEnd: handleDragEnd,
     opacity: seasonOpacity,
   };

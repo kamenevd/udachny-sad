@@ -10,6 +10,7 @@ import { YandexCallback } from "./screens/YandexCallback";
 import { YANDEX_CALLBACK_PATH } from "./lib/auth";
 const Gardens = lazy(() => import("./screens/Gardens").then(m => ({ default: m.Gardens })));
 const GardenDetail = lazy(() => import("./screens/GardenDetail").then(m => ({ default: m.GardenDetail })));
+const PlotEditor = lazy(() => import("./editor/PlotEditor").then(m => ({ default: m.PlotEditor })));
 const Plants = lazy(() => import("./screens/Plants").then(m => ({ default: m.Plants })));
 const PlantingDetail = lazy(() => import("./screens/PlantingDetail").then(m => ({ default: m.PlantingDetail })));
 const PlaceHistory = lazy(() => import("./screens/PlaceHistory").then(m => ({ default: m.PlaceHistory })));
@@ -38,6 +39,7 @@ type Screen =
   | { name: "plants" }
   | { name: "dashboard" }
   | { name: "gardenDetail"; gardenId: string; gardenName: string }
+  | { name: "plotEditor"; gardenId: string; gardenName: string }
   | {
       name: "plantingDetail";
       plantingId: string;
@@ -126,6 +128,28 @@ function AppAuthenticated() {
           onOpenSeasonReport={() =>
             setScreen({
               name: "seasonReport",
+              gardenId: screen.gardenId,
+              gardenName: screen.gardenName,
+            })
+          }
+          onEditPlan={() =>
+            setScreen({
+              name: "plotEditor",
+              gardenId: screen.gardenId,
+              gardenName: screen.gardenName,
+            })
+          }
+        />
+      );
+
+    case "plotEditor":
+      return (
+        <PlotEditor
+          gardenId={screen.gardenId}
+          gardenName={screen.gardenName}
+          onBack={() =>
+            setScreen({
+              name: "gardenDetail",
               gardenId: screen.gardenId,
               gardenName: screen.gardenName,
             })
