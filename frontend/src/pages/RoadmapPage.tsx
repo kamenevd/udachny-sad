@@ -48,7 +48,7 @@ const ITEMS: Item[] = [
     lines: ['Открывается как приложение.', 'Фотографии видны даже без сети.'],
   },
   {
-    status: 'doing',
+    status: 'done',
     emoji: '✏️',
     title: 'Свободные формы на плане',
     lines: [
@@ -58,7 +58,7 @@ const ITEMS: Item[] = [
     ],
   },
   {
-    status: 'later',
+    status: 'doing',
     emoji: '🌱',
     title: 'Посадка одним касанием',
     lines: [

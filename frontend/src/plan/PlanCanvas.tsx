@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Pt, Shape } from '../lib/geometry'
-import { dist, dragHandle, hitShape, keepInside, moveShape, shapeHandles, snap } from '../lib/geometry'
+import {
+  dist,
+  dragHandle,
+  dragRotate,
+  hitShape,
+  keepInside,
+  moveShape,
+  rectRotateHandle,
+  shapeHandles,
+  snap,
+} from '../lib/geometry'
 import { FEATURE_KINDS, plantEmoji } from '../lib/catalog'
 import type { Feature } from '../lib/types'
 import { usePlan } from './store'
@@ -17,6 +27,7 @@ type Gesture =
   | { g: 'pinch'; d0: number; s0: number; wx: number; wy: number }
   | { g: 'shape'; start: Pt; orig: Shape; moved: boolean }
   | { g: 'handle'; idx: number }
+  | { g: 'rotate' }
 
 const MIN_S = 2
 const MAX_S = 160
@@ -110,6 +121,10 @@ export default function PlanCanvas() {
     const handleIdx = target.dataset?.handle
 
     if (m.m === 'edit') {
+      if (target.dataset?.rotate !== undefined) {
+        gesture.current = { g: 'rotate' }
+        return
+      }
       if (handleIdx !== undefined) {
         gesture.current = { g: 'handle', idx: Number(handleIdx) }
         return
@@ -161,6 +176,11 @@ export default function PlanCanvas() {
 
     if (g.g === 'handle') {
       setDraft(dragHandle(m.draft, g.idx, world))
+      return
+    }
+
+    if (g.g === 'rotate' && m.draft.t === 'rect') {
+      setDraft(dragRotate(m.draft, world))
     }
   }
 
@@ -334,6 +354,49 @@ export default function PlanCanvas() {
                 />
               </g>
             ))}
+
+          {/* Ручка поворота (только прямоугольники) */}
+          {draft &&
+            draft.t === 'rect' &&
+            (() => {
+              const rh = rectRotateHandle(draft, 44 / view.s)
+              const top = rectRotateHandle(draft, 0)
+              return (
+                <g>
+                  <line
+                    x1={top.x}
+                    y1={top.y}
+                    x2={rh.x}
+                    y2={rh.y}
+                    stroke="#0b57d0"
+                    strokeWidth={2 / view.s}
+                    strokeDasharray={`${4 / view.s} ${4 / view.s}`}
+                  />
+                  <circle cx={rh.x} cy={rh.y} r={26 / view.s} fill="transparent" data-rotate="" />
+                  <circle
+                    cx={rh.x}
+                    cy={rh.y}
+                    r={13 / view.s}
+                    fill="#0b57d0"
+                    stroke="#ffffff"
+                    strokeWidth={2.5 / view.s}
+                    data-rotate=""
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <text
+                    x={rh.x}
+                    y={rh.y}
+                    fontSize={16 / view.s}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="#ffffff"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    ⟳
+                  </text>
+                </g>
+              )
+            })()}
         </g>
       </svg>
 

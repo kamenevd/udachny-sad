@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { pb, pbError, setLastPlot } from '../lib/pb'
 import type { Plant } from '../lib/types'
 import { ENTRY_TYPES, FEATURE_KINDS, KIND_MENU, PLANT_TYPE_MENU, PLANT_TYPES, plantEmoji } from '../lib/catalog'
-import { extendLine, shrinkLine } from '../lib/geometry'
+import { extendLine, insertPolyPoint, removePolyPoint, shrinkLine, toPoly } from '../lib/geometry'
 import { fmtDate, todayISO, yearOf } from '../lib/dates'
 import Sheet from '../ui/Sheet'
 import { toast } from '../ui/toast'
@@ -146,13 +146,52 @@ function EditPanel() {
   const feature = features.find((f) => f.id === mode.featureId)
   const draft = mode.draft
   const isLine = draft.t === 'line'
+  const isPoly = draft.t === 'poly'
+  const canFree = draft.t === 'rect' || draft.t === 'ellipse'
+  const hint =
+    draft.t === 'rect'
+      ? 'углы меняют размер, синяя ручка поворачивает'
+      : isPoly
+        ? 'тяните за точки, двигайте целиком'
+        : 'потяните за точки или перетащите целиком'
 
   return (
     <div className="plan-panel">
       <h3>
         {feature ? `${FEATURE_KINDS[feature.kind].emoji} ${feature.label || FEATURE_KINDS[feature.kind].label}` : ''}
-        <span className="muted"> — потяните за точки или перетащите целиком</span>
+        <span className="muted"> — {hint}</span>
       </h3>
+      {(canFree || isPoly) && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {canFree && (
+            <button
+              className="btn btn--secondary btn--small"
+              onClick={() => usePlan.getState().setDraft(toPoly(draft))}
+            >
+              ✨ Свободная форма
+            </button>
+          )}
+          {isPoly && (
+            <>
+              <span className="muted">Точек: {draft.pts.length}</span>
+              <button
+                className="btn btn--secondary btn--small"
+                onClick={() => usePlan.getState().setDraft(insertPolyPoint(draft))}
+              >
+                + Точка
+              </button>
+              {draft.pts.length > 3 && (
+                <button
+                  className="btn btn--secondary btn--small"
+                  onClick={() => usePlan.getState().setDraft(removePolyPoint(draft))}
+                >
+                  − Точка
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {isLine && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="muted">Ширина: {draft.w.toFixed(1)} м</span>

@@ -45,6 +45,9 @@ export function FeatureShape({ kind, shape, label, selected, scale }: Props) {
 
   switch (shape.t) {
     case 'rect': {
+      const rot = shape.a
+        ? `rotate(${shape.a} ${shape.x + shape.w / 2} ${shape.y + shape.h / 2})`
+        : undefined
       body = (
         <rect
           x={shape.x}
@@ -52,6 +55,7 @@ export function FeatureShape({ kind, shape, label, selected, scale }: Props) {
           width={shape.w}
           height={shape.h}
           rx={kind === 'lawn' ? 0.4 : 0.1}
+          transform={rot}
           fill={st.fill}
           stroke={st.stroke}
           strokeWidth={0.12}
@@ -61,6 +65,7 @@ export function FeatureShape({ kind, shape, label, selected, scale }: Props) {
         decor = (
           <path
             d={`M ${shape.x} ${shape.y} L ${shape.x + shape.w} ${shape.y + shape.h} M ${shape.x + shape.w} ${shape.y} L ${shape.x} ${shape.y + shape.h}`}
+            transform={rot}
             stroke={st.stroke}
             strokeWidth={0.06}
             fill="none"
@@ -95,6 +100,19 @@ export function FeatureShape({ kind, shape, label, selected, scale }: Props) {
           fill={st.fill}
           stroke={st.stroke}
           strokeWidth={0.1}
+          strokeDasharray={kind === 'bed' ? '0.3 0.2' : undefined}
+        />
+      )
+      break
+    }
+    case 'poly': {
+      body = (
+        <polygon
+          points={pointsAttr(shape.pts)}
+          fill={st.fill}
+          stroke={st.stroke}
+          strokeWidth={0.1}
+          strokeLinejoin="round"
           strokeDasharray={kind === 'bed' ? '0.3 0.2' : undefined}
         />
       )
