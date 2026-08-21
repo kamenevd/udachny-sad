@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fileUrl, pb, pbError } from '../lib/pb'
-import type { Entry, EntryType, Planting } from '../lib/types'
-import { ENTRY_MENU, ENTRY_TYPES, FEATURE_KINDS, PLANT_TYPES, plantEmoji, STATUS_LABELS } from '../lib/catalog'
+import type { Entry, EntryType, Plant, Planting } from '../lib/types'
+import {
+  ENTRY_MENU,
+  ENTRY_TYPES,
+  FEATURE_KINDS,
+  PLANT_TYPE_MENU,
+  PLANT_TYPES,
+  plantEmoji,
+  STATUS_LABELS,
+} from '../lib/catalog'
 import { fmtDate, groupBy, toInputDate, todayISO, yearOf } from '../lib/dates'
 import Sheet from '../ui/Sheet'
 import PhotoInput from '../ui/PhotoInput'
@@ -327,15 +335,60 @@ function EditPlantingSheet({
   const nav = useNavigate()
   const [planted, setPlanted] = useState(toInputDate(planting.planted_on))
   const [status, setStatus] = useState(planting.status)
+  const [plants, setPlants] = useState<Plant[] | null>(null)
+  const [plantId, setPlantId] = useState(planting.plant)
+  const [newPlantName, setNewPlantName] = useState('')
+  const [newPlantType, setNewPlantType] = useState<string>(
+    planting.expand?.plant?.ptype || planting.plant_ptype || 'perennial',
+  )
   const [busy, setBusy] = useState(false)
+  const creatingNew = plantId === '__new'
+
+  useEffect(() => {
+    pb.collection('plants')
+      .getFullList<Plant>({ sort: 'name' })
+      .then(setPlants)
+      .catch((e) => {
+        toast(pbError(e))
+        setPlants([])
+      })
+  }, [])
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     try {
+      let nextPlantId = plantId
+      let nextPlantName = planting.expand?.plant?.name ?? planting.plant_name ?? 'Растение'
+      let nextPlantType: string = planting.expand?.plant?.ptype ?? planting.plant_ptype ?? ''
+
+      if (creatingNew) {
+        if (!newPlantName.trim()) {
+          toast('Напишите название нового растения.')
+          return
+        }
+        const rec = await pb.collection('plants').create<Plant>({
+          name: newPlantName.trim(),
+          ptype: newPlantType,
+          owner: pb.authStore.record?.id,
+        })
+        nextPlantId = rec.id
+        nextPlantName = rec.name
+        nextPlantType = rec.ptype || newPlantType
+      } else {
+        const picked = plants?.find((p) => p.id === plantId)
+        if (picked) {
+          nextPlantName = picked.name
+          nextPlantType = picked.ptype || ''
+        }
+      }
+
       await pb.collection('plantings').update(planting.id, {
         planted_on: planted || null,
         status,
+        plant: nextPlantId,
+        plant_name: nextPlantName,
+        plant_ptype: nextPlantType,
         ...(status === 'growing' ? { ended_on: null, end_note: '' } : {}),
       })
       onSaved()
@@ -365,6 +418,49 @@ function EditPlantingSheet({
     <Sheet title="Посадка" onClose={onClose}>
       <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <label className="field">
+          <span>Растение</span>
+          {plants === null ? (
+            <div className="spinner" style={{ margin: '6px auto' }} />
+          ) : (
+            <select className="input" value={plantId} onChange={(e) => setPlantId(e.target.value)}>
+              {!plants.some((p) => p.id === plantId) && plantId !== '__new' && (
+                <option value={plantId}>🌿 Текущее растение</option>
+              )}
+              {plants.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {plantEmoji(p.ptype)} {p.name}
+                  {p.cultivar ? ` «${p.cultivar}»` : ''}
+                </option>
+              ))}
+              <option value="__new">+ Новое растение</option>
+            </select>
+          )}
+        </label>
+        {creatingNew && (
+          <>
+            <label className="field">
+              <span>Название нового растения</span>
+              <input
+                className="input"
+                maxLength={160}
+                value={newPlantName}
+                onChange={(e) => setNewPlantName(e.target.value)}
+                placeholder="Например: Флокс белый"
+              />
+            </label>
+            <label className="field">
+              <span>Тип</span>
+              <select className="input" value={newPlantType} onChange={(e) => setNewPlantType(e.target.value)}>
+                {PLANT_TYPE_MENU.map((t) => (
+                  <option key={t} value={t}>
+                    {PLANT_TYPES[t].emoji} {PLANT_TYPES[t].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        <label className="field">
           <span>Дата посадки</span>
           <input
             className="input"
@@ -386,7 +482,7 @@ function EditPlantingSheet({
             <option value="moved">🔁 Пересажено</option>
           </select>
         </label>
-        <button className="btn btn--block" disabled={busy}>
+        <button className="btn btn--block" disabled={busy || plants === null}>
           Сохранить
         </button>
         <button type="button" className="btn btn--danger btn--block" onClick={remove}>
