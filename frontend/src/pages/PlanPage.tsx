@@ -11,6 +11,7 @@ import type { PhotoWalkResult } from '../plan/store'
 import { usePlan } from '../plan/store'
 import PlanCanvas from '../plan/PlanCanvas'
 import QuickPlantSheet from '../plan/QuickPlantSheet'
+import StartupSchemaSheet from '../plan/StartupSchemaSheet'
 
 export default function PlanPage() {
   const { id } = useParams<{ id: string }>()
@@ -19,6 +20,7 @@ export default function PlanPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [walkOpen, setWalkOpen] = useState(false)
+  const [startupOpen, setStartupOpen] = useState(false)
   const [renameId, setRenameId] = useState<string | null>(null)
   const [quickPhoto, setQuickPhoto] = useState<File | null>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -111,6 +113,16 @@ export default function PlanPage() {
           </button>
         </>
       )}
+
+      {showFab && features.length === 0 && (
+        <div className="plan-panel" style={{ bottom: 'calc(var(--nav-h) + var(--safe-b) + 96px)' }}>
+          <h3>Новый участок?</h3>
+          <p className="muted">Добавьте несколько фото, и мы сразу набросаем дом, дорожки и клумбы.</p>
+          <button className="btn btn--block" onClick={() => setStartupOpen(true)}>
+            🧭 Стартовая схема с фото
+          </button>
+        </div>
+      )}
       <input
         ref={cameraRef}
         type="file"
@@ -151,6 +163,15 @@ export default function PlanPage() {
             className="btn btn--secondary btn--block"
             onClick={() => {
               setAddOpen(false)
+              setStartupOpen(true)
+            }}
+          >
+            🧭 Стартовая схема с фото
+          </button>
+          <button
+            className="btn btn--secondary btn--block"
+            onClick={() => {
+              setAddOpen(false)
               setPickerOpen(true)
             }}
           >
@@ -186,6 +207,7 @@ export default function PlanPage() {
       {pickerOpen && <PlantPicker onClose={() => setPickerOpen(false)} />}
 
       {quickPhoto && <QuickPlantSheet photo={quickPhoto} onClose={() => setQuickPhoto(null)} />}
+      {startupOpen && <StartupSchemaSheet onClose={() => setStartupOpen(false)} />}
       {walkOpen && <PhotoWalkSheet onClose={() => setWalkOpen(false)} />}
 
       {renameId && <RenameSheet featureId={renameId} onClose={() => setRenameId(null)} />}

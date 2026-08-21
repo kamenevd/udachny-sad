@@ -6,6 +6,7 @@ import { hitShape, keepInside, snapShape } from '../lib/geometry'
 import { FEATURE_KINDS } from '../lib/catalog'
 import { todayISO } from '../lib/dates'
 import { buildWalkPoints, nearestGrowingPlanting } from '../lib/photoWalk'
+import { buildStartupSchema, type StartupPhotoPrompt, type StartupPlotOutline } from '../lib/startupSchema'
 import { toast } from '../ui/toast'
 
 export type Sel = { type: 'feature' | 'planting'; id: string } | null
@@ -42,6 +43,13 @@ export interface PhotoWalkResult {
   failed: number
 }
 
+export interface StartupSchemaResult {
+  requested: number
+  created: number
+  failed: number
+  byKind: Partial<Record<FeatureKind, number>>
+}
+
 /** К чему привязывается посадка при размещении: приоритет клумба > изгородь > газон. */
 const ANCHOR_KINDS: FeatureKind[] = ['bed', 'hedge', 'lawn']
 
@@ -59,6 +67,12 @@ function findAnchor(features: Feature[], p: Pt): string {
 
 function plantingName(p: Planting): string {
   return p.expand?.plant?.name ?? p.plant_name ?? 'Растение'
+}
+
+function nextFeatureLabel(kind: FeatureKind, existing: Feature[]): string {
+  const no = existing.filter((f) => f.kind === kind).length + 1
+  const base = FEATURE_KINDS[kind].label
+  return no === 1 ? base : `${base} ${no}`
 }
 
 async function createEntryWithPhoto(plantingId: string, photo: File, note: string) {
@@ -101,6 +115,10 @@ interface PlanState {
   startAddPlanting: (plantId: string, plantName: string, plantPtype: string) => void
   startQuickPlant: (photo: File, q: QuickPlant) => void
   startPhotoWalk: (photos: File[], newPlantType: string) => void
+  createStartupSchema: (
+    outline: StartupPlotOutline,
+    photos: StartupPhotoPrompt[],
+  ) => Promise<StartupSchemaResult>
   clearWalkResult: () => void
   startMovePlanting: (plantingId: string) => void
   cancelMode: () => void
@@ -191,6 +209,90 @@ export const usePlan = create<PlanState>((set, get) => ({
 
   startPhotoWalk: (photos, newPlantType) =>
     set({ mode: { m: 'photo-walk', photos, newPlantType, start: null }, sel: null, walkResult: null }),
+
+  async createStartupSchema(outline, photos) {
+    const { plot, plotId } = get()
+    const empty: StartupSchemaResult = { requested: 0, created: 0, failed: 0, byKind: {} }
+    if (!plot) return empty
+
+    const drafts = buildStartupSchema({ width: plot.width, height: plot.height, outline, photos })
+    if (drafts.length === 0) {
+      toast('Добавьте подсказки: где дом и что видно на фото.')
+      return empty
+    }
+
+    set({
+      mode: { m: 'view' },
+      sel: null,
+      walkResult: null,
+      saving: true,
+      savingText: 'Набрасываем схему…',
+    })
+
+    const createdFeatures: Feature[] = []
+    const byKind: Partial<Record<FeatureKind, number>> = {}
+    let failed = 0
+    let snapshot = [...get().features]
+
+    for (const draft of drafts) {
+      try {
+        const shape = snapShape(keepInside(draft.shape, plot.width, plot.height))
+        const kind = draft.kind
+        const label = nextFeatureLabel(kind, snapshot)
+        const payload = {
+          plot: plotId,
+          kind,
+          label,
+          shape,
+          z: 0,
+          author_email: pb.authStore.record?.email ?? '',
+        }
+        let rec: Feature
+        try {
+          rec = await pb.collection('features').create<Feature>(payload)
+        } catch (e) {
+          if (!isBadRequest(e)) throw e
+          rec = await pb.collection('features').create<Feature>({
+            plot: plotId,
+            kind,
+            label,
+            shape,
+            z: 0,
+          })
+        }
+        createdFeatures.push(rec)
+        snapshot = [...snapshot, rec]
+        byKind[kind] = (byKind[kind] ?? 0) + 1
+      } catch {
+        failed += 1
+      }
+    }
+
+    const first = createdFeatures[0]
+    set({
+      features: [...get().features, ...createdFeatures],
+      mode: { m: 'view' },
+      sel: first ? { type: 'feature', id: first.id } : null,
+      saving: false,
+      savingText: '',
+    })
+
+    const out: StartupSchemaResult = {
+      requested: drafts.length,
+      created: createdFeatures.length,
+      failed,
+      byKind,
+    }
+
+    if (out.created === 0) {
+      toast('Не получилось набросать схему. Попробуйте ещё раз.')
+    } else if (out.failed > 0) {
+      toast(`Схема готова частично: ${out.created} из ${out.requested}.`)
+    } else {
+      toast(`Схема готова: добавили ${out.created} объектов.`)
+    }
+    return out
+  },
 
   clearWalkResult: () => set({ walkResult: null }),
 
