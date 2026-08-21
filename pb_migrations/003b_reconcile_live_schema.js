@@ -46,6 +46,32 @@ function ensureField(collection, spec) {
 }
 
 /**
+ * Relation-поле с гарантией правильной целевой коллекции. Живой сервер
+ * создавался вручную, и у части relation-полей целью оказалась users
+ * (_pb_users_auth_) вместо настоящей коллекции — правила вида
+ * plantingId.gardenId.ownerId из-за этого не резолвились (обнаружено при
+ * деплое 2026-08-21). PocketBase запрещает менять collectionId существующего
+ * поля («The relation collection cannot be changed»), поэтому кривое поле
+ * пересоздаётся. Пересоздание допустимо только без записей — обе затронутые
+ * таблицы (plantings, journalEvents) на живом пусты.
+ *
+ * Удаление фиксируется отдельным app.save: id полей в PocketBase детерминированы
+ * (тип + crc32 имени), т.е. новое поле получает тот же id, и без промежуточного
+ * сохранения валидатор считает пересоздание сменой цели и отклоняет её.
+ */
+function ensureRelation(app, collection, spec) {
+  const f = collection.fields.getByName(spec.name);
+  if (f) {
+    if (f.collectionId === spec.collectionId) return false;
+    if (app.findAllRecords(collection.name).length > 0) return false;
+    collection.fields.removeById(f.id);
+    app.save(collection);
+  }
+  collection.fields.add(new Field(spec));
+  return true;
+}
+
+/**
  * created/updated — autodate-поля. В PocketBase 0.23+ они не появляются
  * сами у программно созданных коллекций, а фронт сортирует по `-created`
  * (400 без поля). У созданных вручную коллекций живого сервера могут
@@ -156,11 +182,11 @@ migrate((app) => {
   const plantings = findCollectionOrNull(app, "plantings");
   const schemaObjects = findCollectionOrNull(app, "schemaObjects");
   if (plantings && plants) {
-    ensureField(plantings, {
+    ensureRelation(app, plantings, {
       name: "gardenId", type: "relation", required: true,
       collectionId: gardens.id, cascadeDelete: true, maxSelect: 1,
     });
-    ensureField(plantings, {
+    ensureRelation(app, plantings, {
       name: "plantId", type: "relation", required: true,
       collectionId: plants.id, cascadeDelete: true, maxSelect: 1,
     });
@@ -192,7 +218,12 @@ migrate((app) => {
   // ── journalEvents: недостающие поля + правила ──
   const journalEvents = findCollectionOrNull(app, "journalEvents");
   if (journalEvents && plantings) {
-    ensureField(journalEvents, {
+    // Легаси-поля живого сервера: `type` (select, required) и `notes` вместо
+    // канонических eventType/description. Обязательный `type` блокировал бы
+    // создание записей новым фронтендом — переименовываем (данных нет).
+    renameField(journalEvents, "type", "eventType");
+    renameField(journalEvents, "notes", "description");
+    ensureRelation(app, journalEvents, {
       name: "plantingId", type: "relation", required: true,
       collectionId: plantings.id, cascadeDelete: true, maxSelect: 1,
     });
@@ -201,8 +232,8 @@ migrate((app) => {
       values: ["planting", "watering", "blooming", "fruiting", "harvest", "pruning", "disease", "pest", "fertilizing", "transplant", "death", "other"],
     });
     ensureSelectValues(journalEvents, "eventType", [
-      "planting", "watering", "blooming", "pruning", "disease",
-      "pest", "fertilizing", "transplant", "death", "other",
+      "planting", "watering", "blooming", "fruiting", "harvest", "pruning",
+      "disease", "pest", "fertilizing", "transplant", "death", "other",
     ]);
     ensureField(journalEvents, { name: "eventDate", type: "date", required: true });
     ensureField(journalEvents, { name: "title", type: "text", required: false, max: 200 });
