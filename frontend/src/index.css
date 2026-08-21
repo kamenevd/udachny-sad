@@ -1198,3 +1198,87 @@ textarea.input {
   color: var(--ink-2);
   line-height: 1.5;
 }
+
+/* Стартовая схема: карта точек съёмки */
+.startup-map {
+  width: 100%;
+  max-height: 40dvh;
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.startup-map-plot {
+  fill: var(--green-soft);
+  stroke: var(--green);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 2;
+}
+
+.startup-map-street {
+  font-size: 4.5px;
+  fill: var(--ink-2);
+}
+
+.startup-map-point {
+  cursor: pointer;
+}
+
+.startup-map-ray {
+  stroke: var(--green);
+  stroke-width: 1;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+
+.startup-map-dot {
+  fill: var(--surface);
+  stroke: var(--green);
+  stroke-width: 1.4;
+}
+
+.startup-map-num {
+  font-size: 6px;
+  font-weight: 700;
+  fill: var(--green);
+  user-select: none;
+}
+
+.startup-map-point--current .startup-map-dot {
+  fill: var(--green);
+}
+
+.startup-map-point--current .startup-map-num {
+  fill: #fff;
+}
+
+.startup-map-point--done .startup-map-dot {
+  fill: var(--green-soft);
+}
+
+.startup-map-point--skipped {
+  opacity: 0.4;
+}
+
+.startup-map-point--optional {
+  opacity: 0.55;
+}
+
+.startup-map-point--optional .startup-map-dot {
+  stroke-dasharray: 2 1.5;
+}
+
+.startup-point-badge {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

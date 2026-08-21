@@ -107,6 +107,20 @@ const collections = [
     listRule: plotRule, viewRule: plotRule, createRule: plotCreate, updateRule: plotRule, deleteRule: plotRule,
   },
   {
+    name: 'plot_photos',
+    type: 'base',
+    fields: [
+      { type: 'relation', name: 'plot', collectionId: '@plots', maxSelect: 1, required: true, cascadeDelete: true },
+      { type: 'text', name: 'point', max: 40 },
+      { type: 'text', name: 'label', max: 120 },
+      { type: 'file', name: 'photo', required: true, maxSelect: 1, maxSize: 10485760, mimeTypes: IMG, thumbs: THUMBS },
+      { type: 'text', name: 'author_email', max: 255 },
+      { type: 'autodate', name: 'created', onCreate: true },
+      { type: 'autodate', name: 'updated', onCreate: true, onUpdate: true },
+    ],
+    listRule: plotRule, viewRule: plotRule, createRule: plotCreate, updateRule: plotRule, deleteRule: plotRule,
+  },
+  {
     name: 'plants',
     type: 'base',
     fields: [
@@ -169,31 +183,45 @@ const byName = Object.fromEntries(existing.items.map((c) => [c.name, c]));
 const idByName = { _pb_users_auth_: '_pb_users_auth_' };
 for (const c of existing.items) idByName[c.name] = c.id;
 
+// Проход 1: создаём недостающие коллекции без правил — правила могут
+// ссылаться на коллекции, которых ещё нет (plots ↔ plot_invites).
 for (const def of collections) {
-  // Ссылки вида '@plots' заменяем на реальные id уже созданных коллекций.
-  const resolved = JSON.parse(JSON.stringify(def));
-  for (const f of resolved.fields) {
+  if (byName[def.name]) continue;
+  const bare = JSON.parse(JSON.stringify(def));
+  delete bare.listRule;
+  delete bare.viewRule;
+  delete bare.createRule;
+  delete bare.updateRule;
+  delete bare.deleteRule;
+  for (const f of bare.fields) {
     if (f.type === 'relation' && f.collectionId.startsWith('@')) {
       const target = f.collectionId.slice(1);
       if (!idByName[target]) throw new Error(`collection ${target} must be created before ${def.name}`);
       f.collectionId = idByName[target];
     }
   }
-  if (byName[def.name]) {
-    const cur = byName[def.name];
-    // Сохраняем id существующих полей, чтобы PATCH не пересоздавал колонки с данными.
-    for (const f of resolved.fields) {
-      const old = cur.fields.find((x) => x.name === f.name);
-      if (old) f.id = old.id;
+  const created = await api('/api/collections', { method: 'POST', body: JSON.stringify(bare) }, token);
+  byName[def.name] = created;
+  idByName[def.name] = created.id;
+  console.log(`created: ${def.name}`);
+}
+
+// Проход 2: обновляем всё целиком, включая правила.
+for (const def of collections) {
+  const resolved = JSON.parse(JSON.stringify(def));
+  for (const f of resolved.fields) {
+    if (f.type === 'relation' && f.collectionId.startsWith('@')) {
+      f.collectionId = idByName[f.collectionId.slice(1)];
     }
-    const updated = await api(`/api/collections/${cur.id}`, { method: 'PATCH', body: JSON.stringify(resolved) }, token);
-    idByName[def.name] = updated.id;
-    console.log(`updated: ${def.name}`);
-  } else {
-    const created = await api('/api/collections', { method: 'POST', body: JSON.stringify(resolved) }, token);
-    idByName[def.name] = created.id;
-    console.log(`created: ${def.name}`);
   }
+  const cur = byName[def.name];
+  // Сохраняем id существующих полей, чтобы PATCH не пересоздавал колонки с данными.
+  for (const f of resolved.fields) {
+    const old = cur.fields.find((x) => x.name === f.name);
+    if (old) f.id = old.id;
+  }
+  await api(`/api/collections/${cur.id}`, { method: 'PATCH', body: JSON.stringify(resolved) }, token);
+  console.log(`updated: ${def.name}`);
 }
 
 console.log('done');

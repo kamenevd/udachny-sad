@@ -6,7 +6,12 @@ import { hitShape, keepInside, snapShape } from '../lib/geometry'
 import { FEATURE_KINDS } from '../lib/catalog'
 import { todayISO } from '../lib/dates'
 import { buildWalkPoints, nearestGrowingPlanting } from '../lib/photoWalk'
-import { buildStartupSchema, type StartupPhotoPrompt, type StartupPlotOutline } from '../lib/startupSchema'
+import {
+  buildPointsFallback,
+  mapVisionToFeatures,
+  type StartupFeatureDraft,
+  type StartupPoint,
+} from '../lib/startupSchema'
 import { toast } from '../ui/toast'
 
 export type Sel = { type: 'feature' | 'planting'; id: string } | null
@@ -47,7 +52,15 @@ export interface StartupSchemaResult {
   requested: number
   created: number
   failed: number
+  /** true — план по распознанным фото, false — черновик по точкам съёмки. */
+  viaVision: boolean
   byKind: Partial<Record<FeatureKind, number>>
+}
+
+/** Снимок стартовой прогулки: точка съёмки + файл с камеры. */
+export interface StartupShot {
+  point: StartupPoint
+  file: File
 }
 
 /** К чему привязывается посадка при размещении: приоритет клумба > изгородь > газон. */
@@ -115,10 +128,7 @@ interface PlanState {
   startAddPlanting: (plantId: string, plantName: string, plantPtype: string) => void
   startQuickPlant: (photo: File, q: QuickPlant) => void
   startPhotoWalk: (photos: File[], newPlantType: string) => void
-  createStartupSchema: (
-    outline: StartupPlotOutline,
-    photos: StartupPhotoPrompt[],
-  ) => Promise<StartupSchemaResult>
+  runStartupSchema: (shots: StartupShot[]) => Promise<StartupSchemaResult>
   clearWalkResult: () => void
   startMovePlanting: (plantingId: string) => void
   cancelMode: () => void
@@ -210,24 +220,90 @@ export const usePlan = create<PlanState>((set, get) => ({
   startPhotoWalk: (photos, newPlantType) =>
     set({ mode: { m: 'photo-walk', photos, newPlantType, start: null }, sel: null, walkResult: null }),
 
-  async createStartupSchema(outline, photos) {
+  async runStartupSchema(shots) {
     const { plot, plotId } = get()
-    const empty: StartupSchemaResult = { requested: 0, created: 0, failed: 0, byKind: {} }
-    if (!plot) return empty
-
-    const drafts = buildStartupSchema({ width: plot.width, height: plot.height, outline, photos })
-    if (drafts.length === 0) {
-      toast('Добавьте подсказки: где дом и что видно на фото.')
-      return empty
+    const empty: StartupSchemaResult = {
+      requested: 0,
+      created: 0,
+      failed: 0,
+      viaVision: false,
+      byKind: {},
     }
+    if (!plot || shots.length === 0) return empty
 
     set({
       mode: { m: 'view' },
       sel: null,
       walkResult: null,
       saving: true,
-      savingText: 'Набрасываем схему…',
+      savingText: 'Смотрим фото…',
     })
+
+    // 1. Фото — в семейное хранилище сада, как и остальные снимки участка.
+    const uploaded: Array<{ record: string; shot: StartupShot }> = []
+    for (const shot of shots) {
+      try {
+        const fd = new FormData()
+        fd.set('plot', plotId)
+        fd.set('point', shot.point.id)
+        fd.set('label', shot.point.label)
+        fd.set('author_email', pb.authStore.record?.email ?? '')
+        fd.set('photo', shot.file)
+        let rec: { id: string }
+        try {
+          rec = await pb.collection('plot_photos').create(fd)
+        } catch (e) {
+          if (!isBadRequest(e)) throw e
+          fd.delete('author_email')
+          rec = await pb.collection('plot_photos').create(fd)
+        }
+        uploaded.push({ record: rec.id, shot })
+      } catch {
+        // Один снимок не загрузился — продолжаем с остальными.
+      }
+    }
+
+    // 2. Сервер сам разбирает фото. Никаких вопросов человеку.
+    let drafts: StartupFeatureDraft[] = []
+    let viaVision = false
+    if (uploaded.length > 0) {
+      try {
+        const res = await fetch('/api/vision/startup-schema', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+          body: JSON.stringify({
+            plot: plotId,
+            width: plot.width,
+            height: plot.height,
+            photos: uploaded.map(({ record, shot }) => ({
+              record,
+              point: shot.point.id,
+              label: shot.point.label,
+              stand: { x: shot.point.x, y: shot.point.y },
+              facing: { x: shot.point.dx, y: shot.point.dy },
+            })),
+          }),
+          signal: AbortSignal.timeout(120000),
+        })
+        if (res.ok) {
+          const data = (await res.json()) as { ok?: boolean; vision?: unknown }
+          if (data?.ok) {
+            drafts = mapVisionToFeatures(data.vision, plot.width, plot.height)
+            viaVision = drafts.length > 0
+          }
+        }
+      } catch {
+        // Распознавание недоступно — нарисуем по точкам съёмки.
+      }
+    }
+
+    if (!viaVision) {
+      drafts = buildPointsFallback(
+        shots.map((s) => s.point.id),
+        plot.width,
+        plot.height,
+      )
+    }
 
     const createdFeatures: Feature[] = []
     const byKind: Partial<Record<FeatureKind, number>> = {}
@@ -281,15 +357,18 @@ export const usePlan = create<PlanState>((set, get) => ({
       requested: drafts.length,
       created: createdFeatures.length,
       failed,
+      viaVision,
       byKind,
     }
 
     if (out.created === 0) {
-      toast('Не получилось набросать схему. Попробуйте ещё раз.')
+      toast('Не получилось нарисовать план. Попробуйте ещё раз.')
+    } else if (!viaVision) {
+      toast('Набросали по точкам съёмки, фото не разобрали')
     } else if (out.failed > 0) {
-      toast(`Схема готова частично: ${out.created} из ${out.requested}.`)
+      toast(`План готов частично: ${out.created} из ${out.requested}.`)
     } else {
-      toast(`Схема готова: добавили ${out.created} объектов.`)
+      toast(`План готов: добавили ${out.created} объектов. Всё можно поправить.`)
     }
     return out
   },

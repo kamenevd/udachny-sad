@@ -3,10 +3,12 @@
  * Статический сервер фронтенда «уДачный сад» (SPA).
  * Без зависимостей: node deploy/serve.mjs [порт] [каталог]
  * Хэшированные ассеты кэшируются навсегда, index.html и sw.js — никогда.
+ * Плюс серверный помощник распознавания фото: POST /api/vision/… (vision.mjs).
  */
 import { createServer } from 'node:http'
 import { stat, readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
+import { handleVision, VISION_PATH } from './vision.mjs'
 
 const PORT = Number(process.argv[2] ?? 4173)
 const ROOT = process.argv[3] ?? new URL('./dist', import.meta.url).pathname
@@ -28,6 +30,13 @@ const MIME = {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? '/', 'http://x')
+
+    if (url.pathname === VISION_PATH) return await handleVision(req, res)
+    if (url.pathname.startsWith('/api/')) {
+      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' })
+      return res.end('{"ok":false,"error":"not-found"}')
+    }
+
     // Защита от выхода за корень: normalize + join держат путь внутри ROOT.
     let path = normalize(decodeURIComponent(url.pathname)).replaceAll('..', '')
     let file = join(ROOT, path)

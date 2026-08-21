@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FEATURE_KINDS } from '../lib/catalog'
 import {
-  hasStartupSignals,
-  type StartupAreaHint,
-  type StartupFocus,
-  type StartupHouseHint,
-  type StartupPhotoPrompt,
-  type StartupPlotOutline,
-  type StartupSizeHint,
+  MIN_STARTUP_PHOTOS,
+  STARTUP_POINTS,
+  canDrawStartup,
+  nextStartupPoint,
+  startupWalkDone,
+  type StartupPoint,
 } from '../lib/startupSchema'
-import type { StartupSchemaResult } from './store'
+import type { StartupShot } from './store'
 import { usePlan } from './store'
 import Sheet from '../ui/Sheet'
 
@@ -17,156 +15,136 @@ interface Props {
   onClose: () => void
 }
 
-const MAX_PHOTOS = 8
-
-const HOUSE_OPTIONS: Array<{ value: StartupHouseHint; label: string }> = [
-  { value: 'none', label: 'Дом не видно' },
-  { value: 'left', label: 'Слева' },
-  { value: 'center', label: 'По центру' },
-  { value: 'right', label: 'Справа' },
-  { value: 'far', label: 'Далеко, на фоне' },
-]
-
-const FOCUS_OPTIONS: Array<{ value: StartupFocus; label: string }> = [
-  { value: 'none', label: 'Пока ничего' },
-  { value: 'path', label: 'Дорожка' },
-  { value: 'bed', label: 'Клумба' },
-  { value: 'trees', label: 'Деревья' },
-]
-
-const AREA_OPTIONS: Array<{ value: StartupAreaHint; label: string }> = [
-  { value: 'unknown', label: 'Не знаю' },
-  { value: 'center', label: 'По центру' },
-  { value: 'top', label: 'Сверху' },
-  { value: 'bottom', label: 'Снизу' },
-  { value: 'left', label: 'Слева' },
-  { value: 'right', label: 'Справа' },
-  { value: 'top-left', label: 'Левый верх' },
-  { value: 'top-right', label: 'Правый верх' },
-  { value: 'bottom-left', label: 'Левый низ' },
-  { value: 'bottom-right', label: 'Правый низ' },
-]
-
-const SIZE_OPTIONS: Array<{ value: StartupSizeHint; label: string }> = [
-  { value: 'small', label: 'Небольшой' },
-  { value: 'medium', label: 'Средний' },
-  { value: 'large', label: 'Крупный' },
-]
-
-const OUTLINE_OPTIONS: Array<{ value: StartupPlotOutline; label: string }> = [
-  { value: 'rect', label: 'Прямоугольный или почти ровный' },
-  { value: 'narrow', label: 'Длинный и узкий' },
-  { value: 'l-shape', label: 'Г-образный' },
-  { value: 'free', label: 'Сложной формы' },
-]
-
-function defaultPrompt(): StartupPhotoPrompt {
-  return {
-    house: 'none',
-    focus: 'none',
-    area: 'unknown',
-    size: 'medium',
-  }
-}
-
-function kindSummary(result: StartupSchemaResult | null): string {
-  if (!result) return ''
-  const order: Array<keyof StartupSchemaResult['byKind']> = ['house', 'path', 'bed', 'tree']
-  return order
-    .map((kind) => {
-      const count = result.byKind[kind]
-      if (!count) return ''
-      return `${FEATURE_KINDS[kind].label}: ${count}`
-    })
-    .filter(Boolean)
-    .join(' · ')
-}
-
+/**
+ * Стартовая схема с фото: карта с точками съёмки, человек ходит и снимает.
+ * После последней точки план рисуется сам — без вопросов про фото.
+ */
 export default function StartupSchemaSheet({ onClose }: Props) {
-  const [items, setItems] = useState<Array<{ file: File; prompt: StartupPhotoPrompt }>>([])
-  const [outline, setOutline] = useState<StartupPlotOutline>('rect')
-  const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState<StartupSchemaResult | null>(null)
+  const plot = usePlan((s) => s.plot)
+  const [shots, setShots] = useState<Record<string, File>>({})
+  const [skipped, setSkipped] = useState<string[]>([])
+  const [currentId, setCurrentId] = useState<string>(STARTUP_POINTS[0].id)
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
-  const photos = useMemo(() => items.map((it) => it.file), [items])
-  const prompts = useMemo(() => items.map((it) => it.prompt), [items])
-  const urls = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos])
+
+  const shotIds = useMemo(() => Object.keys(shots), [shots])
+  const current = STARTUP_POINTS.find((p) => p.id === currentId) ?? STARTUP_POINTS[0]
+  const walkDone = startupWalkDone(shotIds, skipped)
+  const enough = canDrawStartup(shotIds.length)
+  const currentUrl = useMemo(
+    () => (shots[currentId] ? URL.createObjectURL(shots[currentId]) : null),
+    [shots, currentId],
+  )
 
   useEffect(() => {
-    return () => urls.forEach((u) => URL.revokeObjectURL(u))
-  }, [urls])
-
-  function addPhotos(list: FileList | null) {
-    if (!list?.length) return
-    setItems((prev) => {
-      const rest = MAX_PHOTOS - prev.length
-      if (rest <= 0) return prev
-      const added = Array.from(list)
-        .slice(0, rest)
-        .map((file) => ({ file, prompt: defaultPrompt() }))
-      return [...prev, ...added]
-    })
-    setResult(null)
-  }
-
-  function updatePrompt(index: number, patch: Partial<StartupPhotoPrompt>) {
-    setItems((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) return item
-        return { ...item, prompt: { ...item.prompt, ...patch } }
-      }),
-    )
-    setResult(null)
-  }
-
-  function removePhoto(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index))
-    setResult(null)
-  }
-
-  const canBuild = photos.length > 0 && hasStartupSignals(prompts) && !saving
-
-  async function build() {
-    if (!canBuild) return
-    setSaving(true)
-    try {
-      const out = await usePlan.getState().createStartupSchema(outline, prompts)
-      setResult(out)
-    } finally {
-      setSaving(false)
+    return () => {
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
+  }, [currentUrl])
+
+  function draw(nextShots: Record<string, File>) {
+    const list: StartupShot[] = STARTUP_POINTS.filter((p) => nextShots[p.id]).map((p) => ({
+      point: p,
+      file: nextShots[p.id],
+    }))
+    void usePlan.getState().runStartupSchema(list)
+    onClose()
+  }
+
+  function afterChange(nextShots: Record<string, File>, nextSkipped: string[]) {
+    const ids = Object.keys(nextShots)
+    if (startupWalkDone(ids, nextSkipped) && canDrawStartup(ids.length)) {
+      draw(nextShots)
+      return
+    }
+    const next = nextStartupPoint(ids, nextSkipped)
+    if (next) setCurrentId(next.id)
+  }
+
+  function addPhoto(file: File | null | undefined) {
+    if (!file) return
+    const nextShots = { ...shots, [currentId]: file }
+    const nextSkipped = skipped.filter((id) => id !== currentId)
+    setShots(nextShots)
+    setSkipped(nextSkipped)
+    afterChange(nextShots, nextSkipped)
+  }
+
+  function skipCurrent() {
+    if (shots[currentId]) return
+    const nextSkipped = skipped.includes(currentId) ? skipped : [...skipped, currentId]
+    setSkipped(nextSkipped)
+    afterChange(shots, nextSkipped)
+  }
+
+  function pickPoint(p: StartupPoint) {
+    setCurrentId(p.id)
+    if (skipped.includes(p.id)) setSkipped(skipped.filter((id) => id !== p.id))
   }
 
   return (
     <Sheet title="Стартовая схема с фото" onClose={onClose}>
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p>
-          Это первая настройка нового участка: добавьте несколько фото, ответьте коротко, и мы набросаем
-          черновой план.
-        </p>
-        <p className="muted">Потом сможете спокойно поправить всё на плане свободными формами.</p>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <p>Пройдите по участку и снимите его с отмеченных точек.</p>
+        <p className="muted">После последней точки план нарисуется сам. Потом всё можно поправить.</p>
       </div>
 
-      <div className="photo-input">
-        {photos.map((f, i) => (
-          <div key={`${f.name}-${i}`} className="photo-preview">
-            <img src={urls[i]} alt={`Фото ${i + 1}`} />
-            <button type="button" aria-label="Убрать фото" onClick={() => removePhoto(i)}>
-              ✕
-            </button>
+      <WalkMap
+        widthM={plot?.width ?? 20}
+        heightM={plot?.height ?? 15}
+        shotIds={shotIds}
+        skipped={skipped}
+        currentId={currentId}
+        onPick={pickPoint}
+      />
+
+      <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+        Снято: {shotIds.length}
+        {shotIds.length < MIN_STARTUP_PHOTOS && ` · для плана нужно хотя бы ${MIN_STARTUP_PHOTOS}`}
+      </p>
+
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="startup-point-badge">{current.n}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3>{current.label}</h3>
+            <p className="muted">{current.hint}</p>
           </div>
-        ))}
+          {currentUrl && (
+            <img
+              src={currentUrl}
+              alt={`Снимок: ${current.label}`}
+              style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)' }}
+            />
+          )}
+        </div>
+
+        <button className="btn btn--block" onClick={() => cameraRef.current?.click()}>
+          📷 {shots[current.id] ? 'Переснять' : 'Снять'}
+        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn--secondary" style={{ flex: 1 }} onClick={() => galleryRef.current?.click()}>
+            🖼️ Из галереи
+          </button>
+          {!shots[current.id] && (
+            <button className="btn btn--ghost" style={{ flex: 1 }} onClick={skipCurrent}>
+              Не добраться — пропустить
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn" style={{ flex: 1 }} onClick={() => cameraRef.current?.click()}>
-          📷 Снять
-        </button>
-        <button className="btn btn--secondary" style={{ flex: 1 }} onClick={() => galleryRef.current?.click()}>
-          🖼️ Из галереи
-        </button>
-      </div>
+      {walkDone && !enough && (
+        <p className="muted" style={{ textAlign: 'center' }}>
+          Пропущено слишком много. Коснитесь точки на карте и снимите её —
+          нужно хотя бы {MIN_STARTUP_PHOTOS} фото.
+        </p>
+      )}
+
+      <button className="btn btn--block" disabled={!enough} onClick={() => draw(shots)}>
+        {enough ? `✨ Готово, рисуй (${shotIds.length} фото)` : 'Готово, рисуй'}
+      </button>
+
       <input
         ref={cameraRef}
         type="file"
@@ -174,7 +152,7 @@ export default function StartupSchemaSheet({ onClose }: Props) {
         capture="environment"
         hidden
         onChange={(e) => {
-          addPhotos(e.target.files)
+          addPhoto(e.target.files?.[0])
           e.target.value = ''
         }}
       />
@@ -182,141 +160,72 @@ export default function StartupSchemaSheet({ onClose }: Props) {
         ref={galleryRef}
         type="file"
         accept="image/*"
-        multiple
         hidden
         onChange={(e) => {
-          addPhotos(e.target.files)
+          addPhoto(e.target.files?.[0])
           e.target.value = ''
         }}
       />
+    </Sheet>
+  )
+}
 
-      <label className="field">
-        <span>Какой примерно формы участок?</span>
-        <select className="input" value={outline} onChange={(e) => setOutline(e.target.value as StartupPlotOutline)}>
-          {OUTLINE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </label>
+function WalkMap({
+  widthM,
+  heightM,
+  shotIds,
+  skipped,
+  currentId,
+  onPick,
+}: {
+  widthM: number
+  heightM: number
+  shotIds: string[]
+  skipped: string[]
+  currentId: string
+  onPick: (p: StartupPoint) => void
+}) {
+  const W = 100
+  const H = W * Math.min(Math.max(heightM / widthM, 0.55), 1.4)
 
-      {photos.length === 0 && (
-        <p className="muted" style={{ textAlign: 'center' }}>
-          Добавьте 3-8 фото, чтобы схема получилась точнее.
-        </p>
-      )}
-
-      {photos.map((_, i) => {
-        const prompt = prompts[i] ?? defaultPrompt()
-        const focusPicked = prompt.focus !== 'none'
+  return (
+    <svg
+      className="startup-map"
+      viewBox={`-6 -6 ${W + 12} ${H + 12}`}
+      role="group"
+      aria-label="Карта точек съёмки"
+    >
+      <rect x={0} y={0} width={W} height={H} rx={3} className="startup-map-plot" />
+      {/* Улица и калитка — снизу. */}
+      <text x={W / 2} y={H + 5} textAnchor="middle" className="startup-map-street">
+        улица
+      </text>
+      {STARTUP_POINTS.map((p) => {
+        const cx = p.x * W
+        const cy = p.y * H
+        const isShot = shotIds.includes(p.id)
+        const isSkipped = skipped.includes(p.id)
+        const isCurrent = p.id === currentId
+        const cls = isCurrent
+          ? 'startup-map-point startup-map-point--current'
+          : isShot
+            ? 'startup-map-point startup-map-point--done'
+            : isSkipped
+              ? 'startup-map-point startup-map-point--skipped'
+              : p.required
+                ? 'startup-map-point'
+                : 'startup-map-point startup-map-point--optional'
         return (
-          <div key={`prompt-${i}`} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <img
-                src={urls[i]}
-                alt={`Фото ${i + 1}`}
-                style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)' }}
-              />
-              <div>
-                <h3>Фото {i + 1}</h3>
-                <p className="muted">Короткие ответы помогут точнее разложить объекты на плане.</p>
-              </div>
-            </div>
-
-            <label className="field">
-              <span>Где дом на этом фото?</span>
-              <select
-                className="input"
-                value={prompt.house}
-                onChange={(e) => updatePrompt(i, { house: e.target.value as StartupHouseHint })}
-              >
-                {HOUSE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Что здесь лучше всего видно?</span>
-              <select
-                className="input"
-                value={prompt.focus}
-                onChange={(e) => updatePrompt(i, { focus: e.target.value as StartupFocus })}
-              >
-                {FOCUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Где это примерно на участке?</span>
-              <select
-                className="input"
-                disabled={!focusPicked}
-                value={prompt.area}
-                onChange={(e) => updatePrompt(i, { area: e.target.value as StartupAreaHint })}
-              >
-                {AREA_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Насколько объект крупный?</span>
-              <select
-                className="input"
-                disabled={!focusPicked}
-                value={prompt.size}
-                onChange={(e) => updatePrompt(i, { size: e.target.value as StartupSizeHint })}
-              >
-                {SIZE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <g key={p.id} className={cls} onClick={() => onPick(p)}>
+            {/* Куда смотреть — короткий луч от точки. */}
+            <line x1={cx} y1={cy} x2={cx + p.dx * 8} y2={cy + p.dy * 8} className="startup-map-ray" />
+            <circle cx={cx} cy={cy} r={isCurrent ? 6.5 : 5.5} className="startup-map-dot" />
+            <text x={cx} y={cy + 2.2} textAnchor="middle" className="startup-map-num">
+              {isShot ? '✓' : isSkipped ? '–' : p.n}
+            </text>
+          </g>
         )
       })}
-
-      {!hasStartupSignals(prompts) && photos.length > 0 && (
-        <p className="muted" style={{ textAlign: 'center' }}>
-          Подскажите хотя бы одно место дома или один объект на фото.
-        </p>
-      )}
-
-      {result && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p>
-            Добавили на план: <b>{result.created}</b>
-            {result.failed > 0 && (
-              <>
-                {' '}
-                из <b>{result.requested}</b>
-              </>
-            )}
-            .
-          </p>
-          {kindSummary(result) && <p className="muted">{kindSummary(result)}</p>}
-          <button className="btn btn--secondary btn--block" onClick={onClose}>
-            ✏️ Перейти к правке схемы
-          </button>
-        </div>
-      )}
-
-      <button className="btn btn--block" disabled={!canBuild} onClick={build}>
-        {saving ? 'Набрасываем…' : '🧭 Набросать схему'}
-      </button>
-    </Sheet>
+    </svg>
   )
 }

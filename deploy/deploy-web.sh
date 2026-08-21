@@ -9,6 +9,7 @@ mkdir -p /opt/udacha-web
 rm -rf /opt/udacha-web/dist.new
 cp -r frontend/dist /opt/udacha-web/dist.new
 cp deploy/serve.mjs /opt/udacha-web/serve.mjs
+cp deploy/vision.mjs /opt/udacha-web/vision.mjs
 rm -rf /opt/udacha-web/dist.old
 [ -d /opt/udacha-web/dist ] && mv /opt/udacha-web/dist /opt/udacha-web/dist.old
 mv /opt/udacha-web/dist.new /opt/udacha-web/dist

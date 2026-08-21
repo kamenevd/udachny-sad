@@ -117,7 +117,7 @@ export default function PlanPage() {
       {showFab && features.length === 0 && (
         <div className="plan-panel" style={{ bottom: 'calc(var(--nav-h) + var(--safe-b) + 96px)' }}>
           <h3>Новый участок?</h3>
-          <p className="muted">Добавьте несколько фото, и мы сразу набросаем дом, дорожки и клумбы.</p>
+          <p className="muted">Пройдитесь с телефоном по отмеченным точкам — и план нарисуется сам.</p>
           <button className="btn btn--block" onClick={() => setStartupOpen(true)}>
             🧭 Стартовая схема с фото
           </button>

@@ -1,34 +1,142 @@
 import type { Shape } from './geometry'
+import { clamp } from './geometry'
 import type { FeatureKind } from './types'
 
-export type StartupPlotOutline = 'rect' | 'narrow' | 'l-shape' | 'free'
-export type StartupHouseHint = 'none' | 'left' | 'center' | 'right' | 'far'
-export type StartupFocus = 'none' | 'path' | 'bed' | 'trees'
-export type StartupAreaHint =
-  | 'center'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right'
-  | 'top-left'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-right'
-  | 'unknown'
-export type StartupSizeHint = 'small' | 'medium' | 'large'
+/**
+ * Стартовая схема с фото: человек проходит участок по точкам съёмки,
+ * которые показывает приложение, и снимает с каждой по кадру.
+ * Дальше план рисуется сам: сервер разбирает фото, а если не смог —
+ * черновик собирается прямо по точкам съёмки. Никаких вопросов про фото.
+ */
 
-export interface StartupPhotoPrompt {
-  house: StartupHouseHint
-  focus: StartupFocus
-  area: StartupAreaHint
-  size: StartupSizeHint
+export interface StartupPoint {
+  id: string
+  /** Номер на карте. */
+  n: number
+  /** Короткое имя точки. */
+  label: string
+  /** Подсказка: где встать и куда смотреть. */
+  hint: string
+  /** Где встать: доли ширины/высоты участка, 0..1. Калитка — снизу. */
+  x: number
+  y: number
+  /** Куда смотрит камера: направление в тех же осях. */
+  dx: number
+  dy: number
+  /** Обязательные точки закрывают прогулку; остальные — по желанию. */
+  required: boolean
 }
 
-export interface StartupSchemaInput {
-  width: number
-  height: number
-  outline: StartupPlotOutline
-  photos: StartupPhotoPrompt[]
+export const STARTUP_POINTS: StartupPoint[] = [
+  {
+    id: 'gate',
+    n: 1,
+    label: 'Калитка',
+    hint: 'Встаньте у калитки и снимите участок — как видите его, заходя с улицы.',
+    x: 0.5,
+    y: 0.94,
+    dx: 0,
+    dy: -1,
+    required: true,
+  },
+  {
+    id: 'house',
+    n: 2,
+    label: 'От дома в сад',
+    hint: 'Подойдите к дому, встаньте спиной к нему и снимите сад.',
+    x: 0.5,
+    y: 0.68,
+    dx: 0,
+    dy: -1,
+    required: true,
+  },
+  {
+    id: 'far-left',
+    n: 3,
+    label: 'Дальний левый угол',
+    hint: 'Дойдите до дальнего левого угла и снимите в сторону дома.',
+    x: 0.08,
+    y: 0.08,
+    dx: 0.7,
+    dy: 0.7,
+    required: true,
+  },
+  {
+    id: 'far-right',
+    n: 4,
+    label: 'Дальний правый угол',
+    hint: 'Теперь дальний правый угол — и снова снимите в сторону дома.',
+    x: 0.92,
+    y: 0.08,
+    dx: -0.7,
+    dy: 0.7,
+    required: true,
+  },
+  {
+    id: 'path',
+    n: 5,
+    label: 'Середина дорожки',
+    hint: 'Встаньте на главную дорожку примерно посередине и снимите вдоль неё.',
+    x: 0.5,
+    y: 0.42,
+    dx: 0,
+    dy: -1,
+    required: true,
+  },
+  {
+    id: 'left-side',
+    n: 6,
+    label: 'Левый край',
+    hint: 'Если хочется точнее: с середины левого края снимите поперёк участка.',
+    x: 0.08,
+    y: 0.5,
+    dx: 1,
+    dy: 0,
+    required: false,
+  },
+  {
+    id: 'right-side',
+    n: 7,
+    label: 'Правый край',
+    hint: 'И с середины правого края — поперёк участка.',
+    x: 0.92,
+    y: 0.5,
+    dx: -1,
+    dy: 0,
+    required: false,
+  },
+]
+
+/** Минимум снимков, чтобы рисовать план. */
+export const MIN_STARTUP_PHOTOS = 3
+
+export function requiredStartupPoints(): StartupPoint[] {
+  return STARTUP_POINTS.filter((p) => p.required)
+}
+
+export function startupPointById(id: string): StartupPoint | null {
+  return STARTUP_POINTS.find((p) => p.id === id) ?? null
+}
+
+/** Хватает ли снимков, чтобы нажать «Готово, рисуй». */
+export function canDrawStartup(shotCount: number): boolean {
+  return shotCount >= MIN_STARTUP_PHOTOS
+}
+
+/** Прогулка закончена: каждая обязательная точка снята или пропущена. */
+export function startupWalkDone(shotIds: string[], skippedIds: string[]): boolean {
+  return requiredStartupPoints().every(
+    (p) => shotIds.includes(p.id) || skippedIds.includes(p.id),
+  )
+}
+
+/** Следующая точка, куда идти: первая обязательная без снимка и без пропуска. */
+export function nextStartupPoint(shotIds: string[], skippedIds: string[]): StartupPoint | null {
+  return (
+    requiredStartupPoints().find(
+      (p) => !shotIds.includes(p.id) && !skippedIds.includes(p.id),
+    ) ?? null
+  )
 }
 
 export interface StartupFeatureDraft {
@@ -36,259 +144,320 @@ export interface StartupFeatureDraft {
   shape: Shape
 }
 
-const SIZE_FACTOR: Record<StartupSizeHint, number> = {
-  small: 0.82,
-  medium: 1,
-  large: 1.24,
+// ---------------------------------------------------------------------------
+// Разбор ответа модели: JSON с относительными координатами (0..1) или метрами.
+// Всё защищено от мусора: невалидные куски просто пропускаются.
+// ---------------------------------------------------------------------------
+
+function fin(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : NaN
+  return Number.isFinite(n) ? n : null
 }
 
-const AREA_RATIO: Record<Exclude<StartupAreaHint, 'unknown'>, { x: number; y: number }> = {
-  center: { x: 0.5, y: 0.5 },
-  top: { x: 0.5, y: 0.2 },
-  bottom: { x: 0.5, y: 0.8 },
-  left: { x: 0.22, y: 0.5 },
-  right: { x: 0.78, y: 0.5 },
-  'top-left': { x: 0.22, y: 0.22 },
-  'top-right': { x: 0.78, y: 0.22 },
-  'bottom-left': { x: 0.22, y: 0.78 },
-  'bottom-right': { x: 0.78, y: 0.78 },
+function pairList(v: unknown): Array<[number, number]> {
+  if (!Array.isArray(v)) return []
+  const out: Array<[number, number]> = []
+  for (const item of v) {
+    if (!Array.isArray(item)) continue
+    const x = fin(item[0])
+    const y = fin(item[1])
+    if (x === null || y === null) continue
+    out.push([x, y])
+  }
+  return out
 }
 
-const HOUSE_RATIO: Record<Exclude<StartupHouseHint, 'none'>, { x: number; y: number }> = {
-  left: { x: 0.3, y: 0.28 },
-  center: { x: 0.5, y: 0.3 },
-  right: { x: 0.7, y: 0.28 },
-  far: { x: 0.5, y: 0.16 },
+/** Собирает все координаты, чтобы понять единицы: доли 0..1 или метры. */
+function detectMeters(raw: Record<string, unknown>): boolean {
+  const coords: number[] = []
+  const push = (v: unknown) => {
+    const n = fin(v)
+    if (n !== null) coords.push(Math.abs(n))
+  }
+  const pushObj = (o: unknown, keys: string[]) => {
+    if (!o || typeof o !== 'object') return
+    for (const k of keys) push((o as Record<string, unknown>)[k])
+  }
+  for (const [x, y] of pairList(raw.outline)) {
+    coords.push(Math.abs(x), Math.abs(y))
+  }
+  pushObj(raw.house, ['cx', 'cy', 'x', 'y'])
+  for (const key of ['buildings', 'beds', 'trees', 'water'] as const) {
+    const list = raw[key]
+    if (!Array.isArray(list)) continue
+    for (const item of list) pushObj(item, ['cx', 'cy'])
+  }
+  if (Array.isArray(raw.paths)) {
+    for (const p of raw.paths) {
+      if (!p || typeof p !== 'object') continue
+      for (const [x, y] of pairList((p as Record<string, unknown>).points)) {
+        coords.push(Math.abs(x), Math.abs(y))
+      }
+    }
+  }
+  if (coords.length === 0) return false
+  return Math.max(...coords) > 1.5
 }
 
-function clamp(v: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, v))
+interface Scale {
+  x: (v: number) => number
+  y: (v: number) => number
+  /** Размер по короткой стороне (радиусы деревьев, ширина дорожки). */
+  s: (v: number) => number
+  /** Размер вдоль ширины участка. */
+  sw: (v: number) => number
+  /** Размер вдоль глубины участка. */
+  sh: (v: number) => number
+  w: number
+  h: number
 }
 
-function clampPoint(x: number, y: number, width: number, height: number, pad = 0.6): { x: number; y: number } {
+function makeScale(meters: boolean, width: number, height: number): Scale {
+  const short = Math.min(width, height)
   return {
-    x: clamp(x, pad, Math.max(pad, width - pad)),
-    y: clamp(y, pad, Math.max(pad, height - pad)),
+    x: (v) => clamp(meters ? v : v * width, 0, width),
+    y: (v) => clamp(meters ? v : v * height, 0, height),
+    s: (v) => (meters ? v : v * short),
+    sw: (v) => (meters ? v : v * width),
+    sh: (v) => (meters ? v : v * height),
+    w: width,
+    h: height,
   }
 }
 
-function areaPoint(area: StartupAreaHint, width: number, height: number): { x: number; y: number } {
-  const ratio = AREA_RATIO[area === 'unknown' ? 'center' : area]
-  const pad = Math.min(Math.max(Math.min(width, height) * 0.06, 0.8), 2.4)
-  return clampPoint(ratio.x * width, ratio.y * height, width, height, pad)
-}
-
-function offsetPoint(base: { x: number; y: number }, nth: number, width: number, height: number): { x: number; y: number } {
-  const step = Math.max(Math.min(width, height) * 0.07, 0.55)
-  const offsets: Array<[number, number]> = [
-    [0, 0],
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-    [1, 1],
-    [-1, 1],
-    [1, -1],
-    [-1, -1],
-  ]
-  const [ox, oy] = offsets[nth % offsets.length]
-  return clampPoint(base.x + ox * step, base.y + oy * step, width, height)
-}
-
-function houseDraft(input: StartupSchemaInput): StartupFeatureDraft | null {
-  const hints = input.photos.filter((p) => p.house !== 'none')
-  if (hints.length === 0) return null
-
-  const avg = hints.reduce(
-    (acc, p) => {
-      const r = HOUSE_RATIO[p.house as Exclude<StartupHouseHint, 'none'>]
-      acc.x += r.x
-      acc.y += r.y
-      acc.size += SIZE_FACTOR[p.size]
-      return acc
-    },
-    { x: 0, y: 0, size: 0 },
-  )
-
-  const sizeFactor = avg.size / hints.length
-  const center = clampPoint(
-    (avg.x / hints.length) * input.width,
-    (avg.y / hints.length) * input.height,
-    input.width,
-    input.height,
-    1,
-  )
-
-  const widthBase = clamp(input.width * 0.26 * sizeFactor, 2.6, input.width * 0.55)
-  const heightBase = clamp(input.height * 0.2 * sizeFactor, 2.2, input.height * 0.48)
-
-  const sizeByOutline =
-    input.outline === 'narrow'
-      ? { w: widthBase * 0.85, h: heightBase * 1.08 }
-      : input.outline === 'l-shape'
-        ? { w: widthBase * 0.9, h: heightBase }
-        : { w: widthBase, h: heightBase }
-
-  const halfW = sizeByOutline.w / 2
-  const halfH = sizeByOutline.h / 2
-  const anchored = clampPoint(center.x, center.y, input.width, input.height, Math.max(halfW, halfH, 0.8))
+function rectDraft(
+  o: Record<string, unknown>,
+  kind: FeatureKind,
+  sc: Scale,
+  minSide: number,
+): StartupFeatureDraft | null {
+  let cx = fin(o.cx)
+  let cy = fin(o.cy)
+  const wRaw = fin(o.w)
+  const hRaw = fin(o.h)
+  if (wRaw === null || hRaw === null) return null
+  if (cx === null || cy === null) {
+    // Допускаем вариант с левым верхним углом.
+    const x = fin(o.x)
+    const y = fin(o.y)
+    if (x === null || y === null) return null
+    cx = x + wRaw / 2
+    cy = y + hRaw / 2
+  }
+  const w = clamp(sc.sw(Math.abs(wRaw)), minSide, sc.w * 0.8)
+  const h = clamp(sc.sh(Math.abs(hRaw)), minSide, sc.h * 0.8)
+  const x0 = clamp(sc.x(cx) - w / 2, 0, Math.max(0, sc.w - w))
+  const y0 = clamp(sc.y(cy) - h / 2, 0, Math.max(0, sc.h - h))
+  const angle = fin(o.angle)
   return {
-    kind: 'house',
+    kind,
     shape: {
       t: 'rect',
-      x: +(anchored.x - halfW).toFixed(2),
-      y: +(anchored.y - halfH).toFixed(2),
-      w: +sizeByOutline.w.toFixed(2),
-      h: +sizeByOutline.h.toFixed(2),
+      x: +x0.toFixed(2),
+      y: +y0.toFixed(2),
+      w: +w.toFixed(2),
+      h: +h.toFixed(2),
+      ...(angle ? { a: Math.round(clamp(angle, -180, 360)) } : {}),
     },
   }
 }
 
-function pathDraft(
-  input: StartupSchemaInput,
-  prompt: StartupPhotoPrompt,
-  nthPath: number,
-): StartupFeatureDraft {
-  const base = areaPoint(prompt.area, input.width, input.height)
-  const anchor = offsetPoint(base, nthPath, input.width, input.height)
-  const sf = SIZE_FACTOR[prompt.size]
-  const len = clamp(
-    Math.min(input.width, input.height) * (input.outline === 'narrow' ? 0.48 : 0.34) * sf,
-    2.4,
-    Math.max(input.width, input.height) * 0.9,
-  )
-  const stroke = clamp(0.72 * sf, 0.45, 1.35)
+function ellipseDraft(
+  o: Record<string, unknown>,
+  kind: FeatureKind,
+  sc: Scale,
+): StartupFeatureDraft | null {
+  const cx = fin(o.cx)
+  const cy = fin(o.cy)
+  const rx = fin(o.rx)
+  const ry = fin(o.ry)
+  if (cx === null || cy === null || rx === null || ry === null) return null
+  return {
+    kind,
+    shape: {
+      t: 'ellipse',
+      cx: +sc.x(cx).toFixed(2),
+      cy: +sc.y(cy).toFixed(2),
+      rx: +clamp(sc.sw(Math.abs(rx)), 0.5, sc.w / 3).toFixed(2),
+      ry: +clamp(sc.sh(Math.abs(ry)), 0.5, sc.h / 3).toFixed(2),
+    },
+  }
+}
 
-  const fromCenterX = input.width / 2 - anchor.x
-  const fromCenterY = input.height / 2 - anchor.y
-  let dirX = 0
-  let dirY = 0
+/**
+ * Ответ модели → объекты плана в метрах участка.
+ * Мусор на входе даёт пустой список, а не ошибку.
+ */
+export function mapVisionToFeatures(
+  raw: unknown,
+  width: number,
+  height: number,
+): StartupFeatureDraft[] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
+  const src = raw as Record<string, unknown>
+  const sc = makeScale(detectMeters(src), width, height)
+  const out: StartupFeatureDraft[] = []
 
-  if (Math.abs(fromCenterX) < 0.4 && Math.abs(fromCenterY) < 0.4) {
-    dirX = 1
-    dirY = input.outline === 'narrow' ? 0 : 0.15
-  } else if (Math.abs(fromCenterX) > Math.abs(fromCenterY)) {
-    dirY = 1
-  } else {
-    dirX = 1
+  // Контур участка — газон-подложка свободной формы.
+  const outline = pairList(src.outline)
+  if (outline.length >= 3) {
+    out.push({
+      kind: 'lawn',
+      shape: {
+        t: 'poly',
+        pts: outline
+          .slice(0, 16)
+          .map(([x, y]) => [+sc.x(x).toFixed(2), +sc.y(y).toFixed(2)] as [number, number]),
+      },
+    })
   }
 
-  const norm = Math.hypot(dirX, dirY) || 1
-  dirX /= norm
-  dirY /= norm
+  if (src.house && typeof src.house === 'object') {
+    const house = rectDraft(src.house as Record<string, unknown>, 'house', sc, 2.5)
+    if (house) out.push(house)
+  }
 
-  const a = clampPoint(anchor.x - dirX * (len / 2), anchor.y - dirY * (len / 2), input.width, input.height)
-  const b = clampPoint(anchor.x + dirX * (len / 2), anchor.y + dirY * (len / 2), input.width, input.height)
+  if (Array.isArray(src.buildings)) {
+    for (const b of src.buildings.slice(0, 4)) {
+      if (!b || typeof b !== 'object') continue
+      const draft = rectDraft(b as Record<string, unknown>, 'building', sc, 1.5)
+      if (draft) out.push(draft)
+    }
+  }
 
-  if (input.outline === 'l-shape' && prompt.size !== 'small') {
-    const bend = clampPoint(anchor.x + dirY * 0.9, anchor.y - dirX * 0.9, input.width, input.height)
-    return {
+  if (Array.isArray(src.paths)) {
+    for (const p of src.paths.slice(0, 6)) {
+      if (!p || typeof p !== 'object') continue
+      const pts = pairList((p as Record<string, unknown>).points)
+      if (pts.length < 2) continue
+      const wRaw = fin((p as Record<string, unknown>).width)
+      const w = wRaw === null ? 0.8 : clamp(sc.s(Math.abs(wRaw)), 0.4, 2.5)
+      out.push({
+        kind: 'path',
+        shape: {
+          t: 'line',
+          pts: pts
+            .slice(0, 12)
+            .map(([x, y]) => [+sc.x(x).toFixed(2), +sc.y(y).toFixed(2)] as [number, number]),
+          w: +w.toFixed(2),
+        },
+      })
+    }
+  }
+
+  if (Array.isArray(src.beds)) {
+    for (const b of src.beds.slice(0, 12)) {
+      if (!b || typeof b !== 'object') continue
+      const bed = b as Record<string, unknown>
+      const polyPts = pairList(bed.points)
+      if (polyPts.length >= 3) {
+        out.push({
+          kind: 'bed',
+          shape: {
+            t: 'poly',
+            pts: polyPts
+              .slice(0, 12)
+              .map(([x, y]) => [+sc.x(x).toFixed(2), +sc.y(y).toFixed(2)] as [number, number]),
+          },
+        })
+        continue
+      }
+      const draft = ellipseDraft(bed, 'bed', sc)
+      if (draft) out.push(draft)
+    }
+  }
+
+  if (Array.isArray(src.trees)) {
+    for (const t of src.trees.slice(0, 24)) {
+      if (!t || typeof t !== 'object') continue
+      const tree = t as Record<string, unknown>
+      const cx = fin(tree.cx)
+      const cy = fin(tree.cy)
+      if (cx === null || cy === null) continue
+      const rRaw = fin(tree.r)
+      const r = rRaw === null ? 1.2 : clamp(sc.s(Math.abs(rRaw)), 0.4, 3)
+      out.push({
+        kind: 'tree',
+        shape: {
+          t: 'circle',
+          cx: +sc.x(cx).toFixed(2),
+          cy: +sc.y(cy).toFixed(2),
+          r: +r.toFixed(2),
+        },
+      })
+    }
+  }
+
+  if (Array.isArray(src.water)) {
+    for (const w of src.water.slice(0, 3)) {
+      if (!w || typeof w !== 'object') continue
+      const draft = ellipseDraft(w as Record<string, unknown>, 'water', sc)
+      if (draft) out.push(draft)
+    }
+  }
+
+  return out
+}
+
+/**
+ * Черновик без распознавания: рисуем прямо по точкам съёмки.
+ * Углы дают контур, точка «от дома» — дом у ближнего края,
+ * калитка и середина дорожки — главную дорожку.
+ */
+export function buildPointsFallback(
+  shotIds: string[],
+  width: number,
+  height: number,
+): StartupFeatureDraft[] {
+  const out: StartupFeatureDraft[] = []
+  const inset = clamp(Math.min(width, height) * 0.03, 0.25, 1)
+
+  out.push({
+    kind: 'lawn',
+    shape: {
+      t: 'poly',
+      pts: [
+        [+inset.toFixed(2), +inset.toFixed(2)],
+        [+(width - inset).toFixed(2), +inset.toFixed(2)],
+        [+(width - inset).toFixed(2), +(height - inset).toFixed(2)],
+        [+inset.toFixed(2), +(height - inset).toFixed(2)],
+      ],
+    },
+  })
+
+  if (shotIds.includes('house')) {
+    const stand = startupPointById('house')
+    const w = clamp(width * 0.3, 3, width * 0.6)
+    const h = clamp(height * 0.16, 2.5, height * 0.4)
+    // Фотограф стоит у дома спиной к нему — сам дом чуть ближе к калитке.
+    const cy = clamp(((stand?.y ?? 0.68) + 0.12) * height, h / 2, height - h / 2)
+    const cx = clamp((stand?.x ?? 0.5) * width, w / 2, width - w / 2)
+    out.push({
+      kind: 'house',
+      shape: {
+        t: 'rect',
+        x: +(cx - w / 2).toFixed(2),
+        y: +(cy - h / 2).toFixed(2),
+        w: +w.toFixed(2),
+        h: +h.toFixed(2),
+      },
+    })
+  }
+
+  if (shotIds.includes('gate') || shotIds.includes('path')) {
+    const gate = startupPointById('gate')
+    const mid = startupPointById('path')
+    out.push({
       kind: 'path',
       shape: {
         t: 'line',
         pts: [
-          [+a.x.toFixed(2), +a.y.toFixed(2)],
-          [+bend.x.toFixed(2), +bend.y.toFixed(2)],
-          [+b.x.toFixed(2), +b.y.toFixed(2)],
+          [+((gate?.x ?? 0.5) * width).toFixed(2), +((gate?.y ?? 0.94) * height).toFixed(2)],
+          [+((mid?.x ?? 0.5) * width).toFixed(2), +((mid?.y ?? 0.42) * height).toFixed(2)],
         ],
-        w: +stroke.toFixed(2),
+        w: 0.8,
       },
-    }
-  }
-
-  return {
-    kind: 'path',
-    shape: {
-      t: 'line',
-      pts: [
-        [+a.x.toFixed(2), +a.y.toFixed(2)],
-        [+b.x.toFixed(2), +b.y.toFixed(2)],
-      ],
-      w: +stroke.toFixed(2),
-    },
-  }
-}
-
-function bedDraft(input: StartupSchemaInput, prompt: StartupPhotoPrompt, nthBed: number): StartupFeatureDraft {
-  const base = areaPoint(prompt.area, input.width, input.height)
-  const center = offsetPoint(base, nthBed, input.width, input.height)
-  const sf = SIZE_FACTOR[prompt.size]
-  const rx = clamp(input.width * 0.085 * sf, 0.75, input.width * 0.22)
-  const ry = clamp(input.height * 0.075 * sf, 0.6, input.height * 0.2)
-  return {
-    kind: 'bed',
-    shape: {
-      t: 'ellipse',
-      cx: +center.x.toFixed(2),
-      cy: +center.y.toFixed(2),
-      rx: +rx.toFixed(2),
-      ry: +ry.toFixed(2),
-    },
-  }
-}
-
-function treeDrafts(input: StartupSchemaInput, prompt: StartupPhotoPrompt, nthTree: number): StartupFeatureDraft[] {
-  const base = areaPoint(prompt.area, input.width, input.height)
-  const sf = SIZE_FACTOR[prompt.size]
-  const count = prompt.size === 'small' ? 1 : prompt.size === 'medium' ? 2 : 3
-  const radius = clamp(Math.min(input.width, input.height) * 0.045 * sf, 0.55, 1.6)
-  const spread = radius * 1.8
-  const offsets: Array<[number, number]> = [
-    [0, 0],
-    [1, 0.5],
-    [-1, 0.5],
-    [0, -1],
-  ]
-
-  return Array.from({ length: count }, (_, i) => {
-    const [ox, oy] = offsets[(nthTree + i) % offsets.length]
-    const center = clampPoint(base.x + ox * spread, base.y + oy * spread, input.width, input.height, radius + 0.4)
-    return {
-      kind: 'tree' as const,
-      shape: {
-        t: 'circle' as const,
-        cx: +center.x.toFixed(2),
-        cy: +center.y.toFixed(2),
-        r: +radius.toFixed(2),
-      },
-    }
-  })
-}
-
-export function hasStartupSignals(photos: StartupPhotoPrompt[]): boolean {
-  return photos.some((p) => p.house !== 'none' || p.focus !== 'none')
-}
-
-/**
- * Черновик стартовой схемы:
- * - дом по подсказкам «где дом на фото»
- * - дорожки/клумбы/деревья по выбору пользователя в каждом фото.
- */
-export function buildStartupSchema(input: StartupSchemaInput): StartupFeatureDraft[] {
-  const out: StartupFeatureDraft[] = []
-  const house = houseDraft(input)
-  if (house) out.push(house)
-
-  let pathNo = 0
-  let bedNo = 0
-  let treeNo = 0
-
-  for (const prompt of input.photos) {
-    if (prompt.focus === 'path') {
-      out.push(pathDraft(input, prompt, pathNo))
-      pathNo += 1
-      continue
-    }
-    if (prompt.focus === 'bed') {
-      out.push(bedDraft(input, prompt, bedNo))
-      bedNo += 1
-      continue
-    }
-    if (prompt.focus === 'trees') {
-      const trees = treeDrafts(input, prompt, treeNo)
-      out.push(...trees)
-      treeNo += trees.length
-    }
+    })
   }
 
   return out

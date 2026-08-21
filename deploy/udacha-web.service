@@ -5,6 +5,9 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/udacha-web
+# Ключ распознавания фото живёт только на сервере; файла может и не быть —
+# тогда стартовая схема рисуется по точкам съёмки без модели.
+EnvironmentFile=-/root/.secrets/udacha-vision.env
 ExecStart=/usr/bin/node /opt/udacha-web/serve.mjs 4173 /opt/udacha-web/dist
 Restart=always
 RestartSec=5
