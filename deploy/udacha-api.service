@@ -1,0 +1,13 @@
+[Unit]
+Description=uDachny Sad API (PocketBase v2)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/udacha-backend
+ExecStart=/opt/udacha-backend/pocketbase serve --http=0.0.0.0:8090 --dir=/opt/udacha-backend/pb_data --migrationsDir=/opt/udacha-backend/pb_migrations
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

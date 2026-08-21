@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- уДачный сад: дерево на зелёном поле -->
+  <rect width="512" height="512" rx="112" fill="#2e6b34"/>
+  <circle cx="256" cy="204" r="118" fill="#a7d08c"/>
+  <circle cx="186" cy="248" r="74" fill="#8bc272"/>
+  <circle cx="330" cy="252" r="80" fill="#8bc272"/>
+  <rect x="238" y="270" width="36" height="140" rx="14" fill="#7a4a2b"/>
+  <path d="M256 320 L200 262" stroke="#7a4a2b" stroke-width="22" stroke-linecap="round"/>
+  <path d="M256 340 L312 276" stroke="#7a4a2b" stroke-width="22" stroke-linecap="round"/>
+  <ellipse cx="256" cy="424" rx="150" ry="26" fill="#245427"/>
+  <circle cx="256" cy="196" r="16" fill="#f2efdf"/>
+  <circle cx="196" cy="240" r="12" fill="#f2efdf"/>
+  <circle cx="318" cy="244" r="12" fill="#f2efdf"/>
+</svg>

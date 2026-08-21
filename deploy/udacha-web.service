@@ -1,0 +1,13 @@
+[Unit]
+Description=uDachny Sad Web (static frontend)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/udacha-web
+ExecStart=/usr/bin/node /opt/udacha-web/serve.mjs 4173 /opt/udacha-web/dist
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
