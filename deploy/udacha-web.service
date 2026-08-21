@@ -7,6 +7,7 @@ Type=simple
 WorkingDirectory=/opt/udacha-web
 # Ключ распознавания фото живёт только на сервере; файла может и не быть —
 # тогда стартовая схема рисуется по точкам съёмки без модели.
+# Там же — прокси хоста (HTTP_PROXY и связка), если наружу можно только через него.
 EnvironmentFile=-/root/.secrets/udacha-vision.env
 ExecStart=/usr/bin/node /opt/udacha-web/serve.mjs 4173 /opt/udacha-web/dist
 Restart=always

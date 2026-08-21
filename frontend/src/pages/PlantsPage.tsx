@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fileUrl, pb, pbError } from '../lib/pb'
 import type { Plant } from '../lib/types'
 import { PLANT_TYPE_MENU, PLANT_TYPES, plantEmoji } from '../lib/catalog'
+import { recognizePlant } from '../lib/plantVision'
 import Sheet from '../ui/Sheet'
 import PhotoInput from '../ui/PhotoInput'
 import { toast } from '../ui/toast'
@@ -21,7 +22,28 @@ export default function PlantsPage() {
   const [q, setQ] = useState('')
   const [form, setForm] = useState<FormState | null>(null)
   const [busy, setBusy] = useState(false)
+  const [lookingPhoto, setLookingPhoto] = useState(false)
 
+  /** Новое растение с фото и без названия — пусть фото само его назовёт. */
+  async function fillFromPhoto(files: File[], current: FormState) {
+    if (current.id || !files[0] || current.name.trim()) return
+    setLookingPhoto(true)
+    const guess = await recognizePlant(files[0], pb.authStore.token)
+    setLookingPhoto(false)
+    if (!guess) {
+      toast('Не узнали — напишите, что это')
+      return
+    }
+    setForm((prev) => {
+      if (!prev || prev.id || prev.name.trim()) return prev
+      return {
+        ...prev,
+        name: guess.name,
+        cultivar: prev.cultivar || guess.cultivar,
+        ptype: guess.ptype,
+      }
+    })
+  }
   async function load() {
     try {
       setPlants(await pb.collection('plants').getFullList<Plant>({ sort: 'name' }))
@@ -192,7 +214,20 @@ export default function PlantsPage() {
               {form.currentPhoto && form.photo.length === 0 && (
                 <p className="muted">Фото уже загружено — выберите новое, чтобы заменить.</p>
               )}
-              <PhotoInput files={form.photo} onChange={(f) => setForm({ ...form, photo: f })} max={1} />
+              <PhotoInput
+                files={form.photo}
+                onChange={(f) => {
+                  setForm({ ...form, photo: f })
+                  fillFromPhoto(f, form)
+                }}
+                max={1}
+              />
+              {lookingPhoto && (
+                <div className="quick-looking">
+                  <div className="spinner" />
+                  <span>Смотрим фото…</span>
+                </div>
+              )}
             </div>
             <button className="btn btn--block" disabled={busy}>
               {busy ? 'Сохраняем…' : 'Сохранить'}

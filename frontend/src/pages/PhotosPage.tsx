@@ -4,6 +4,7 @@ import { fileUrl, pb, pbError } from '../lib/pb'
 import type { Entry, Planting } from '../lib/types'
 import { ENTRY_TYPES, plantEmoji } from '../lib/catalog'
 import { fmtDate, fmtMonthYear, groupBy, plural, todayISO } from '../lib/dates'
+import { matchByName, recognizePlant } from '../lib/plantVision'
 import JournalTabs from '../ui/JournalTabs'
 import Sheet from '../ui/Sheet'
 import { toast } from '../ui/toast'
@@ -169,6 +170,10 @@ function PhotoOneTapSheet({
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<Planting | null>(null)
   const [busy, setBusy] = useState(false)
+  const [looking, setLooking] = useState(true)
+  const [guessName, setGuessName] = useState('')
+  /** Человек уже выбирает сам — догадка не вмешивается. */
+  const touchedRef = useRef(false)
 
   useEffect(() => {
     const u = URL.createObjectURL(photo)
@@ -185,6 +190,33 @@ function PhotoOneTapSheet({
         setPlantings([])
       })
   }, [])
+
+  // Смотрим на фото: если узнали растение из посадок — выбираем его сами.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const guess = await recognizePlant(photo, pb.authStore.token)
+      if (cancelled) return
+      setLooking(false)
+      if (guess) setGuessName(guess.name)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [photo])
+
+  const guessMatch = useMemo(() => {
+    if (!guessName || !plantings) return null
+    const byName = (p: Planting) => p.expand?.plant?.name ?? p.plant_name ?? ''
+    const growing = plantings.filter((p) => p.status === 'growing')
+    return matchByName(growing, byName, guessName) ?? matchByName(plantings, byName, guessName)
+  }, [guessName, plantings])
+
+  useEffect(() => {
+    if (guessMatch && !touchedRef.current) {
+      setPicked((prev) => prev ?? guessMatch)
+    }
+  }, [guessMatch])
 
   const filtered = (plantings ?? []).filter((p) => {
     if (!q.trim()) return true
@@ -230,12 +262,29 @@ function PhotoOneTapSheet({
           <img src={url} alt="Новый снимок" />
         </div>
 
+        {looking && (
+          <div className="quick-looking">
+            <div className="spinner" />
+            <span>Смотрим фото…</span>
+          </div>
+        )}
+
+        {!looking && guessName && picked && picked.id === guessMatch?.id && (
+          <p className="muted">Узнали по фото — если не оно, выберите другое ниже.</p>
+        )}
+        {!looking && guessName && !guessMatch && plantings !== null && (
+          <p className="muted">Похоже, на фото {guessName} — но на плане такого пока нет.</p>
+        )}
+
         <label className="field">
           <span>К какому растению добавить?</span>
           <input
             className="input"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              touchedRef.current = true
+              setQ(e.target.value)
+            }}
             placeholder="Поиск по названию и участку…"
           />
         </label>
@@ -263,7 +312,10 @@ function PhotoOneTapSheet({
                   key={p.id}
                   className="row"
                   style={picked?.id === p.id ? { borderColor: 'var(--green)', background: 'var(--green-soft)' } : undefined}
-                  onClick={() => setPicked(p)}
+                  onClick={() => {
+                    touchedRef.current = true
+                    setPicked(p)
+                  }}
                 >
                   <span className="row-emoji">{plantEmoji(plantType)}</span>
                   <div className="row-body">

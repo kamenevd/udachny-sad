@@ -1,7 +1,6 @@
 /**
- * Серверное распознавание участка по фото стартовой прогулки.
- * Ключ OpenRouter живёт только здесь (EnvironmentFile у systemd-юнита),
- * во фронтенд и в git он не попадает.
+ * Серверное распознавание фото. Ключ OpenRouter живёт только здесь
+ * (EnvironmentFile у systemd-юнита), во фронтенд и в git он не попадает.
  *
  * POST /api/vision/startup-schema
  *   Заголовок Authorization — токен пользователя PocketBase.
@@ -9,18 +8,27 @@
  *   Фото уже загружены в коллекцию plot_photos; сервер сам берёт их
  *   уменьшенные копии у локального PocketBase и шлёт модели одним запросом.
  *   Ответ: { ok: true, vision: {...} } либо { ok: false, error }.
+ *
+ * POST /api/vision/plant
+ *   Заголовок Authorization — токен пользователя PocketBase.
+ *   Тело: { image: "data:image/jpeg;base64,..." } — уменьшенный снимок растения.
+ *   Ответ: { ok: true, plant: { known, name, cultivar, ptype } } либо { ok: false, error }.
  */
 
 const PB_URL = (process.env.UDACHA_PB_URL ?? 'http://127.0.0.1:8090').replace(/\/$/, '')
 const OR_KEY = process.env.OPENROUTER_API_KEY ?? ''
 const OR_BASE = (process.env.OPENROUTER_BASE ?? 'https://openrouter.ai/api/v1').replace(/\/$/, '')
-const OR_MODEL = process.env.OPENROUTER_VISION_MODEL ?? 'openai/gpt-4o'
+// По умолчанию — модель, доступная ключу этого хоста (gpt-4o закрыт политикой данных аккаунта).
+const OR_MODEL = process.env.OPENROUTER_VISION_MODEL ?? 'xiaomi/mimo-v2.5'
 
 const ID_RE = /^[a-zA-Z0-9_-]{1,40}$/
 const MAX_PHOTOS = 10
 const MAX_BODY = 64 * 1024
+// Фото растения приезжает в теле запроса (уменьшенный JPEG в base64).
+const MAX_PLANT_BODY = 4 * 1024 * 1024
 
 export const VISION_PATH = '/api/vision/startup-schema'
+export const PLANT_VISION_PATH = '/api/vision/plant'
 
 function json(res, status, body) {
   const data = JSON.stringify(body)
@@ -32,13 +40,13 @@ function json(res, status, body) {
   res.end(data)
 }
 
-function readBody(req) {
+function readBody(req, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
     const chunks = []
     let size = 0
     req.on('data', (c) => {
       size += c.length
-      if (size > MAX_BODY) {
+      if (size > limit) {
         reject(new Error('body too large'))
         req.destroy()
         return
@@ -168,11 +176,8 @@ function extractJson(text) {
   }
 }
 
-async function askVision(reqData, images) {
-  const content = [{ type: 'text', text: userPrompt(reqData) }]
-  for (const url of images) {
-    content.push({ type: 'image_url', image_url: { url } })
-  }
+/** Один вызов модели с картинками, ответ — распарсенный JSON или null. */
+async function callModel(system, content, { maxTokens = 2000, timeoutMs = 90000 } = {}) {
   const res = await fetch(`${OR_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -184,14 +189,14 @@ async function askVision(reqData, images) {
     body: JSON.stringify({
       model: OR_MODEL,
       temperature: 0.2,
-      max_tokens: 2000,
+      max_tokens: maxTokens,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: system },
         { role: 'user', content },
       ],
     }),
-    signal: AbortSignal.timeout(90000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!res.ok) {
     const errText = await res.text().catch(() => '')
@@ -199,6 +204,14 @@ async function askVision(reqData, images) {
   }
   const data = await res.json()
   return extractJson(data?.choices?.[0]?.message?.content)
+}
+
+async function askVision(reqData, images) {
+  const content = [{ type: 'text', text: userPrompt(reqData) }]
+  for (const url of images) {
+    content.push({ type: 'image_url', image_url: { url } })
+  }
+  return callModel(SYSTEM_PROMPT, content)
 }
 
 export async function handleVision(req, res) {
@@ -240,6 +253,78 @@ export async function handleVision(req, res) {
     return json(res, 200, { ok: true, vision })
   } catch (e) {
     console.error(`vision: plot ${reqData.plot} failed: ${e?.message ?? e}`)
+    return json(res, 502, { ok: false, error: 'vision-failed' })
+  }
+}
+
+/** Токен настоящий? Спрашиваем у локального PocketBase, не разбирая JWT сами. */
+async function checkUserToken(token) {
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/users/auth-refresh`, {
+      method: 'POST',
+      headers: { Authorization: token },
+      signal: AbortSignal.timeout(15000),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+const PLANT_PROMPT = `You identify one garden plant from one photo for a Russian home-garden app.
+Reply with ONLY a JSON object, no prose:
+{
+  "known": true,      // false if no plant is clearly visible or you cannot tell what it is
+  "name": "Гортензия метельчатая",  // household Russian name, capitalized; genus alone is fine ("Роза", "Хоста")
+  "cultivar": "",     // cultivar only if clearly identifiable from the photo, else ""
+  "ptype": "shrub"    // one of: perennial, shrub, tree, conifer, bulb, annual, vine, grass
+}
+Rules: the name must be in Russian, the way gardeners say it, no Latin.
+Never invent a cultivar. If several plants are in the photo, pick the main one in the middle.
+If unsure of the exact species, give the genus and set "known": true anyway.`
+
+const DATA_URL_RE = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/
+
+export async function handlePlantVision(req, res) {
+  if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'method' })
+  const token = req.headers.authorization ?? ''
+  if (!token) return json(res, 401, { ok: false, error: 'auth' })
+
+  let raw
+  try {
+    raw = await readBody(req, MAX_PLANT_BODY)
+  } catch {
+    return json(res, 413, { ok: false, error: 'too-large' })
+  }
+  let image = ''
+  try {
+    const body = JSON.parse(raw)
+    if (typeof body?.image === 'string') image = body.image
+  } catch {
+    /* невалидный JSON отсечём ниже */
+  }
+  if (!DATA_URL_RE.test(image)) return json(res, 400, { ok: false, error: 'bad-request' })
+
+  if (!(await checkUserToken(token))) return json(res, 403, { ok: false, error: 'forbidden' })
+  if (!OR_KEY) return json(res, 503, { ok: false, error: 'vision-unavailable' })
+
+  const started = Date.now()
+  try {
+    const plant = await callModel(
+      PLANT_PROMPT,
+      [
+        { type: 'text', text: 'What plant is on this photo?' },
+        { type: 'image_url', image_url: { url: image } },
+      ],
+      { maxTokens: 300, timeoutMs: 45000 },
+    )
+    if (!plant || typeof plant !== 'object') throw new Error('empty model answer')
+    console.log(
+      `vision-plant: "${String(plant.name ?? '').slice(0, 60)}" in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+    )
+    return json(res, 200, { ok: true, plant })
+  } catch (e) {
+    console.error(`vision-plant failed: ${e?.message ?? e}`)
     return json(res, 502, { ok: false, error: 'vision-failed' })
   }
 }

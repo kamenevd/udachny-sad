@@ -8,7 +8,7 @@
 import { createServer } from 'node:http'
 import { stat, readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
-import { handleVision, VISION_PATH } from './vision.mjs'
+import { handlePlantVision, handleVision, PLANT_VISION_PATH, VISION_PATH } from './vision.mjs'
 
 const PORT = Number(process.argv[2] ?? 4173)
 const ROOT = process.argv[3] ?? new URL('./dist', import.meta.url).pathname
@@ -32,6 +32,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://x')
 
     if (url.pathname === VISION_PATH) return await handleVision(req, res)
+    if (url.pathname === PLANT_VISION_PATH) return await handlePlantVision(req, res)
     if (url.pathname.startsWith('/api/')) {
       res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' })
       return res.end('{"ok":false,"error":"not-found"}')

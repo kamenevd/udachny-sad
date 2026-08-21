@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { pb } from '../lib/pb'
 import type { Plant } from '../lib/types'
 import { PLANT_TYPE_MENU, PLANT_TYPES, plantEmoji } from '../lib/catalog'
+import { applyGuess, recognizePlant } from '../lib/plantVision'
 import Sheet from '../ui/Sheet'
+import { toast } from '../ui/toast'
 import { usePlan } from './store'
 
 /**
- * «Посадка одним касанием», шаг после снимка:
- * фото уже есть, человек пишет название — и идёт выбирать место на плане.
+ * «Посадка одним касанием», шаг после снимка: приложение само смотрит
+ * на фото и заполняет название с видом; если похожее растение уже есть
+ * в списке — подставляет его. Человеку остаётся поправить (если надо)
+ * и коснуться места на плане.
  */
 export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClose: () => void }) {
   const [url, setUrl] = useState('')
@@ -15,6 +19,11 @@ export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClo
   const [ptype, setPtype] = useState('perennial')
   const [plants, setPlants] = useState<Plant[]>([])
   const [picked, setPicked] = useState<Plant | null>(null)
+  const [looking, setLooking] = useState(true)
+  const [guessed, setGuessed] = useState(false)
+  /** Человек уже начал сам — догадка не должна затирать его ввод. */
+  const touchedRef = useRef(false)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const u = URL.createObjectURL(photo)
@@ -22,13 +31,40 @@ export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClo
     return () => URL.revokeObjectURL(u)
   }, [photo])
 
-  // Свои растения — чтобы не плодить дубли, если такое уже записано.
+  // Свои растения (для догадки и подсказок) + распознавание фото на сервере.
   useEffect(() => {
-    pb.collection('plants')
+    let cancelled = false
+    const plantsPromise = pb
+      .collection('plants')
       .getFullList<Plant>({ sort: 'name' })
-      .then(setPlants)
-      .catch(() => {})
-  }, [])
+      .catch(() => [] as Plant[])
+    plantsPromise.then((list) => {
+      if (!cancelled) setPlants(list)
+    })
+    ;(async () => {
+      const guess = await recognizePlant(photo, pb.authStore.token)
+      const list = await plantsPromise
+      if (cancelled) return
+      setLooking(false)
+      if (!guess) {
+        toast('Не узнали — напишите, что это')
+        nameRef.current?.focus()
+        return
+      }
+      if (touchedRef.current) return
+      const applied = applyGuess(list, guess)
+      if (applied.picked) {
+        setPicked(applied.picked)
+      } else {
+        setName(applied.name)
+        setPtype(applied.ptype)
+      }
+      setGuessed(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [photo])
 
   const query = name.trim().toLowerCase()
   const matches = useMemo(() => {
@@ -58,18 +94,31 @@ export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClo
           <img src={url} alt="Снимок растения" />
         </div>
 
+        {looking && (
+          <div className="quick-looking">
+            <div className="spinner" />
+            <span>Смотрим фото…</span>
+          </div>
+        )}
+
         {!picked && (
           <label className="field">
             <span>Название</span>
             <input
+              ref={nameRef}
               className="input"
               required
               maxLength={160}
-              autoFocus
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                touchedRef.current = true
+                setName(e.target.value)
+              }}
               placeholder="Например: Пион «Сара Бернар»"
             />
+            {guessed && !looking && (
+              <span className="muted">Угадали по фото — поправьте, если не так.</span>
+            )}
           </label>
         )}
 
@@ -81,7 +130,10 @@ export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClo
                 type="button"
                 key={p.id}
                 className="quick-match"
-                onClick={() => setPicked(p)}
+                onClick={() => {
+                  touchedRef.current = true
+                  setPicked(p)
+                }}
               >
                 {plantEmoji(p.ptype)} {p.name}
                 {p.cultivar ? ` «${p.cultivar}»` : ''}
@@ -103,7 +155,10 @@ export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClo
               type="button"
               className="icon-btn"
               aria-label="Не оно, ввести название"
-              onClick={() => setPicked(null)}
+              onClick={() => {
+                touchedRef.current = true
+                setPicked(null)
+              }}
             >
               ✕
             </button>
@@ -119,7 +174,10 @@ export default function QuickPlantSheet({ photo, onClose }: { photo: File; onClo
                   type="button"
                   key={t}
                   className={ptype === t ? 'active' : ''}
-                  onClick={() => setPtype(t)}
+                  onClick={() => {
+                    touchedRef.current = true
+                    setPtype(t)
+                  }}
                 >
                   <span className="e">{PLANT_TYPES[t].emoji}</span>
                   {PLANT_TYPES[t].label}
