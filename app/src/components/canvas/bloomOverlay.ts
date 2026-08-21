@@ -22,6 +22,18 @@ export interface ObjectBloomState {
   blooming: boolean;
   /** Сколько растений объекта цветёт — показываем в подписи объекта */
   bloomingCount: number;
+  /**
+   * PLAN13 этап 3: на объекте растут только декоративно-лиственные/хвойные
+   * (у растений вообще нет месяцев цветения). Такие объекты в режиме
+   * сезонности не приглушаются как «вне сезона» — хвойник зимой так же
+   * зелен, как летом.
+   */
+  evergreen: boolean;
+}
+
+/** Есть ли у растения данные о цветении (пустой массив — хвойные/лиственные). */
+function hasBloomMonths(plant: Pick<Plant, 'bloom_months'> | null): boolean {
+  return Array.isArray(plant?.bloom_months) && plant.bloom_months.length > 0;
 }
 
 /**
@@ -40,7 +52,12 @@ export function computeBloomStates(
     const objectId = planting.schemaObjectId;
     if (!objectId) continue;
 
-    const prev = states.get(objectId) ?? { color: null, blooming: false, bloomingCount: 0 };
+    const prev = states.get(objectId) ?? {
+      color: null,
+      blooming: false,
+      bloomingCount: 0,
+      evergreen: true,
+    };
     const plant = planting.plant;
     const blooms = plant != null && bloomsIn(plant, month);
 
@@ -48,6 +65,8 @@ export function computeBloomStates(
       color: prev.color ?? (blooms ? (plant?.primary_color ?? null) : null),
       blooming: prev.blooming || blooms,
       bloomingCount: prev.bloomingCount + (blooms ? 1 : 0),
+      // evergreen, пока ВСЕ растения объекта без месяцев цветения
+      evergreen: prev.evergreen && !hasBloomMonths(plant),
     });
   }
 

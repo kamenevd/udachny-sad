@@ -56,9 +56,13 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       manifest: {
-        name: "уДачный сад",
+        id: "/",
+        start_url: "/",
+        scope: "/",
+        name: "уДачный сад — журнал вашего участка",
         short_name: "уДачный сад",
-        description: "Учёт растений",
+        description:
+          "Схема участка, журнал растений и история мест: рисуйте сад, ведите наблюдения, смотрите сезоны цветения.",
         theme_color: "#F7EFD9",
         background_color: "#F7EFD9",
         display: "standalone",

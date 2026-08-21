@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ClientResponseError } from "pocketbase";
 import { pb, gardens as gardensApi, type Garden } from "../lib/pb";
 import { logout } from "../lib/auth";
 import { getStreakForGardens, type StreakResult } from "../lib/pbStats";
@@ -9,6 +10,7 @@ import { Modal } from "../components/Modal";
 import { Banner } from "../components/Banner";
 import { OnboardingHint } from "../components/OnboardingHint";
 import { GuidedTour } from "../components/GuidedTour";
+import { SeasonalTasksCard } from "../components/SeasonalTasksCard";
 import { SkeletonList, LoadingAnnouncer } from "../components/Skeleton";
 import { useSafePbAction } from "../hooks/useSafePbAction";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
@@ -51,20 +53,42 @@ export function validateGardenInput(
 
 export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: GardensProps) {
   const [gardens, setGardens] = useState<Garden[] | undefined>(undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [streak, setStreak] = useState<StreakResult | null>(null);
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // BUGS.md #3: раньше упавший запрос списка оставлял вечный скелетон (ошибка
+  // не ловилась), а пользователь видел «пусто» без объяснения. Теперь ошибка
+  // переводит экран в состояние «не загрузилось» с кнопкой «Повторить»;
+  // автоотмена SDK (двойной маунт StrictMode) ошибкой не считается.
   const loadGardens = async () => {
-    const list = await gardensApi.list({ sort: "-created" });
+    setLoadFailed(false);
+    let list: Garden[];
+    try {
+      list = await gardensApi.list({ sort: "-created" });
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.isAbort) return [];
+      setLoadFailed(true);
+      return [];
+    }
     setGardens(list);
-    const streakResult = await getStreakForGardens(list.map((g) => g.id));
-    setStreak(streakResult);
+    // Стрик — вторичная информация: его ошибка не должна ронять экран.
+    try {
+      setStreak(await getStreakForGardens(list.map((g) => g.id)));
+    } catch {
+      setStreak(null);
+    }
     return list;
   };
 
   useEffect(() => {
+    // Гейт в main.tsx рендерит Gardens только при валидной авторизации, но
+    // токен мог протухнуть между рендерами — без проверки запрос вернёт
+    // пустой список (listRule отфильтрует всё), что выглядит как потеря данных.
+    if (!pb.authStore.isValid) return;
     void loadGardens();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pull-to-refresh (задача 34.2): принудительно перечитываем список участков.
@@ -265,26 +289,43 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
 
       <main id="main-content" className="mx-auto max-w-2xl p-4">
-        {gardens === undefined ? (
+        {loadFailed && gardens === undefined ? (
+          <div className="mt-20 text-center" role="alert">
+            <div className="mb-4 text-6xl">📡</div>
+            <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
+              Не получилось загрузить
+            </p>
+            <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
+              Проверьте связь — данные никуда не делись
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => void loadGardens()}
+              className="mx-auto max-w-xs"
+            >
+              Повторить
+            </Button>
+          </div>
+        ) : gardens === undefined ? (
           <div className="mt-6">
             <LoadingAnnouncer />
             <SkeletonList count={3} />
           </div>
         ) : gardens.length === 0 ? (
-          <div className="mt-20 text-center">
+          <div className="mt-20 text-center animate-fade-in-up motion-reduce:animate-none">
             <div className="mb-4 text-6xl">🌱</div>
             <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
-              Ни одного цветка без записи!
+              Ваш сад ждёт своих первых жителей
             </p>
             <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
-              Добавьте первый сад — дом, клумбы, деревья
+              Создайте участок — дом, клумбы, деревья — и начните вести его историю
             </p>
             <Button
               variant="primary"
               onClick={() => setShowCreate(true)}
               className="mx-auto max-w-xs"
             >
-              + Добавить участок
+              🏡 Создать первый сад
             </Button>
             <div className="mx-auto mt-6 max-w-sm text-left">
               <OnboardingHint step="first-garden" />
@@ -292,10 +333,13 @@ export function Gardens({ onSelectGarden, onOpenPlants, onOpenDashboard }: Garde
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {gardens.map((g) => (
+            {/* Сезонные дела месяца (PLAN13 этап 5) */}
+            <SeasonalTasksCard />
+            {gardens.map((g, index) => (
               <div
                 key={g.id}
-                className="rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank"
+                className="rounded-[10px] border-2 border-ink bg-surface p-[5px] shadow-blank animate-fade-in-up motion-reduce:animate-none"
+                style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
               >
                 <div className="flex items-center justify-between rounded-[6px] border border-ink p-4">
                   <button

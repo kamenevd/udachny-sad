@@ -126,6 +126,7 @@ describe('computeBloomStates', () => {
       color: '#E86A9A',
       blooming: true,
       bloomingCount: 1,
+      evergreen: false,
     });
   });
 
@@ -146,11 +147,34 @@ describe('computeBloomStates', () => {
       color: '#E86A9A',
       blooming: true,
       bloomingCount: 1,
+      evergreen: false,
     });
   });
 
   it('посадки без места схемы пропускаются', () => {
     const states = computeBloomStates([{ plant: phlox }], 7);
     expect(states.size).toBe(0);
+  });
+
+  // PLAN13 этап 3: декоративно-лиственные всегда видны
+  it('объект только с хвойными помечается evergreen — канвас его не глушит', () => {
+    const states = computeBloomStates([{ schemaObjectId: 'bed1', plant: thuja }], 7);
+    expect(states.get('bed1')).toMatchObject({ blooming: false, evergreen: true });
+  });
+
+  it('флокс вне сезона НЕ evergreen — у него есть месяцы цветения', () => {
+    const states = computeBloomStates([{ schemaObjectId: 'bed1', plant: phlox }], 1);
+    expect(states.get('bed1')).toMatchObject({ blooming: false, evergreen: false });
+  });
+
+  it('смесь хвойного и флокса вне сезона — не evergreen (клумба «спит»)', () => {
+    const states = computeBloomStates(
+      [
+        { schemaObjectId: 'bed1', plant: thuja },
+        { schemaObjectId: 'bed1', plant: phlox },
+      ],
+      1,
+    );
+    expect(states.get('bed1')).toMatchObject({ blooming: false, evergreen: false });
   });
 });

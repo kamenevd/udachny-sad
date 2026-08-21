@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useState, useDeferredValue } from 'react';
+import { ClientResponseError } from 'pocketbase';
 import { pb, plants as plantsApi, type Plant } from '../lib/pb';
 import { useSafePbAction } from '../hooks/useSafePbAction';
 import { Button } from '../components/Button';
@@ -17,26 +18,20 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useToast } from '../components/Toast';
 import { BloomingTimeline } from '../components/BloomingCalendar/BloomingTimeline';
 import { useBloomingSeasons } from '../hooks/useBloomingSeasons';
-import { MONTHS_RU_IN } from '../types/plant';
+import { MONTHS_RU_IN, PLANT_TYPES } from '../types/plant';
+import {
+  TagFilter,
+  EMPTY_TAG_FILTER,
+  isTagFilterEmpty,
+  matchesTagFilter,
+  type TagFilterState,
+} from '../components/TagFilter';
 import { PLANT_CATALOG } from '../data/plantCatalog';
 import { seedPlantCatalog } from '../lib/seedPlantCatalog';
 
-// PLAN12 задача 2: к 4 базовым типам добавлены категории справочника —
-// хвойные, розы и луковичные вынесены из «кустарников»/«многолетников»,
-// потому что уход и сезонность у них принципиально разные.
-export const PLANT_TYPES: { type: string; label: string; plural: string }[] = [
-  { type: 'tree', label: 'Дерево', plural: 'Деревья' },
-  { type: 'shrub', label: 'Кустарник', plural: 'Кустарники' },
-  { type: 'conifer', label: 'Хвойное', plural: 'Хвойные' },
-  { type: 'rose', label: 'Роза', plural: 'Розы' },
-  { type: 'perennial', label: 'Многолетник', plural: 'Многолетники' },
-  { type: 'bulb', label: 'Луковичное', plural: 'Луковичные' },
-  { type: 'annual', label: 'Однолетник', plural: 'Однолетники' },
-];
-
-export function plantTypeLabel(type: string): string {
-  return PLANT_TYPES.find((t) => t.type === type)?.label ?? type;
-}
+// PLAN13: словарь типов переехал в types/plant.ts (общий для канвы и форм,
+// не тянет экран в чужие чанки); ре-экспорт сохраняет старые импорты.
+export { PLANT_TYPES, plantTypeLabel } from '../types/plant';
 
 interface PlantsProps {
   onBack: () => void;
@@ -44,19 +39,29 @@ interface PlantsProps {
 
 export function Plants({ onBack }: PlantsProps) {
   const [plants, setPlants] = useState<Plant[] | undefined>(undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
   const createPlant = useSafePbAction(
     (data: { plantType: string; name: string; variety?: string }) =>
       plantsApi.create({ ...data, userId: pb.authStore.record?.id ?? '' }),
   );
   const { showToast } = useToast();
 
+  // Как и Gardens (BUGS.md #3): упавший запрос не должен оставлять вечный
+  // скелетон — показываем состояние «не загрузилось» с кнопкой «Повторить».
   const loadPlants = async () => {
-    const list = await plantsApi.list({ sort: 'name' });
-    setPlants(list);
+    setLoadFailed(false);
+    try {
+      const list = await plantsApi.list({ sort: 'name' });
+      setPlants(list);
+    } catch (err) {
+      if (err instanceof ClientResponseError && err.isAbort) return;
+      setLoadFailed(true);
+    }
   };
 
   useEffect(() => {
     void loadPlants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pull-to-refresh (задача 34.2): принудительно перечитываем справочник.
@@ -80,17 +85,27 @@ export function Plants({ onBack }: PlantsProps) {
   const { filtered: bloomingFiltered, isBlooming, countByMonth, hasBloomData } =
     useBloomingSeasons(plants, selectedMonth);
 
+  // Теги условий (PLAN13 этап 4): солнце/тень/влага поверх остальных фильтров.
+  const [tagFilter, setTagFilter] = useState<TagFilterState>(EMPTY_TAG_FILTER);
+  const hasTraitData = useMemo(
+    () => (plants ?? []).some((p) => p.sun_exposure || p.moisture),
+    [plants],
+  );
+
   // Секции реестра по типам; нумерация сквозная.
   // useDeferredValue даёт debounce-эффект — поиск не блокирует ввод.
   const sections = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
+    const tagged = isTagFilterEmpty(tagFilter)
+      ? bloomingFiltered
+      : bloomingFiltered.filter((p) => matchesTagFilter(p, tagFilter));
     const filtered = q
-      ? bloomingFiltered.filter(
+      ? tagged.filter(
           (p) =>
             p.name.toLowerCase().includes(q) ||
             (p.variety?.toLowerCase().includes(q) ?? false),
         )
-      : bloomingFiltered;
+      : tagged;
     let n = 0;
     return PLANT_TYPES.map((t) => ({
       ...t,
@@ -105,7 +120,7 @@ export function Plants({ onBack }: PlantsProps) {
           accentColor: p.primary_color,
         })),
     })).filter((s) => s.items.length > 0);
-  }, [bloomingFiltered, deferredSearch, isBlooming]);
+  }, [bloomingFiltered, deferredSearch, isBlooming, tagFilter]);
 
   // Загрузка готового справочника в пустой список (PLAN12 задача 13)
   const [seeding, setSeeding] = useState(false);
@@ -173,13 +188,30 @@ export function Plants({ onBack }: PlantsProps) {
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
 
       <main id="main-content" className="mx-auto max-w-2xl p-4 pb-28">
-        {plants === undefined ? (
+        {loadFailed && plants === undefined ? (
+          <div className="mt-20 text-center" role="alert">
+            <div className="mb-4 text-6xl">📡</div>
+            <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
+              Не получилось загрузить
+            </p>
+            <p className="mb-6 text-[17px] leading-[1.55] text-ink-muted">
+              Проверьте связь — справочник никуда не делся
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => void loadPlants()}
+              className="mx-auto max-w-xs"
+            >
+              Повторить
+            </Button>
+          </div>
+        ) : plants === undefined ? (
           <div className="mt-6">
             <LoadingAnnouncer />
             <SkeletonList count={4} />
           </div>
         ) : plants.length === 0 ? (
-          <div className="mt-20 text-center">
+          <div className="mt-20 text-center animate-fade-in-up motion-reduce:animate-none">
             <div className="mb-4 text-6xl">🌻</div>
             <p className="mb-2 font-poster text-[21px] font-semibold uppercase text-ink">
               Каждому растению — карточку!
@@ -224,24 +256,46 @@ export function Plants({ onBack }: PlantsProps) {
                 aria-label="Поиск по растениям"
               />
             )}
+            {/* Теги условий (PLAN13 этап 4) — только когда трейты заполнены */}
+            {hasTraitData && (
+              <TagFilter state={tagFilter} onChange={setTagFilter} />
+            )}
             {sections.length === 0 ? (
               <div className="mt-12 text-center">
                 <div className="mb-3 text-4xl">{selectedMonth !== null ? '🌙' : '🔍'}</div>
                 <p className="font-poster text-[17px] font-semibold uppercase text-ink-muted">
                   {selectedMonth !== null
                     ? `В ${MONTHS_RU_IN[selectedMonth - 1]} ничего не цветёт`
-                    : 'Ничего не нашлось'}
+                    : 'Ничего не найдено'}
                 </p>
                 <p className="mt-1 text-[15px] text-ink-muted">
                   {selectedMonth !== null
                     ? 'Выберите другой месяц или сбросьте фильтр'
                     : 'Попробуйте изменить запрос'}
                 </p>
+                {/* PLAN13 этап 2: CTA сброса фильтров прямо из пустого состояния */}
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSearch('');
+                    setSelectedMonth(null);
+                    setTagFilter(EMPTY_TAG_FILTER);
+                  }}
+                  className="mx-auto mt-4 max-w-xs"
+                >
+                  Сбросить фильтры
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col gap-6">
-                {sections.map((s) => (
-                  <Registry key={s.type} sectionTitle={s.plural} items={s.items} />
+                {sections.map((s, index) => (
+                  <div
+                    key={s.type}
+                    className="animate-fade-in-up motion-reduce:animate-none"
+                    style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+                  >
+                    <Registry sectionTitle={s.plural} items={s.items} />
+                  </div>
                 ))}
               </div>
             )}

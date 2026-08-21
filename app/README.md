@@ -11,30 +11,31 @@
 |---|---|
 | Frontend | Vite + React 19 + TypeScript (strict) |
 | Стили | Tailwind CSS |
-| PWA | vite-plugin-pwa (StaleWhileRevalidate + CacheFirst) |
-| Backend | Convex (queries/mutations, File Storage) |
-| Auth | Convex Auth (magic link + Google OAuth) |
+| PWA | vite-plugin-pwa (StaleWhileRevalidate + CacheFirst, офлайн-фолбэк) |
+| Backend | PocketBase (self-hosted, REST + realtime; миграции в `../pb_migrations/`) |
+| Auth | Telegram Login Widget + Яндекс OAuth2 + email/пароль (демо-вход) |
 | Схема участка | Konva.js + react-konva (pan/zoom, рисование объектов, зоны освещённости) |
-| Тесты | Vitest + @testing-library/react |
+| Тесты | Vitest + @testing-library/react, e2e — Playwright |
+
+> ⚠️ Каталог `convex/` — наследие до-PLAN7 архитектуры, приложение его не
+> использует. Источник правды по схеме данных — `../pb_migrations/`.
 
 ## Возможности
 
-- 🗺️ **Интерактивная схема участка** — рисование грядок, зон, объектов с pan/zoom
-- 🌱 **Каталог растений** — справочник по типам (деревья, кустарники, многолетники…)
+- 🗺️ **Интерактивная схема участка** — рисование клумб, композиций, зон с pan/zoom
+- 🌱 **Каталог растений** — 43 декоративных вида для зоны 4 с трейтами (цветение, свет, влага)
+- 🏷️ **Теги-фильтры** — чипы «солнце/полутень/тень/влага» с мульти-выбором
 - 📋 **Посадки** — размещение растений на схеме, статусы, история
-- 📔 **Журнал событий** — 12 типов (полив, урожай, болезнь, обрезка…), фото
-- 📸 **Фотогалерея** — загрузка с камеры или галереи, штамп даты, lazy-loading изображений
-- 📍 **История мест** — что росло на этом месте раньше (севооборот)
-- 🔔 **Toast-уведомления** + **OfflineBanner** при потере связи
-- 📴 **Оффлайн** — Service Worker кэширует API и изображения, offline.html-фолбэк,
-  фоновая синхронизация отложенных мутаций (useQueuedMutation)
-- 📱 **PWA** — устанавливается на домашний экран, app shortcuts (deep link
-  `?screen=plants`), haptic feedback
-- ♿ **A11y** — skip-to-content, focus trap в модалах, focus-visible ring,
-  prefers-reduced-motion, live regions (toast/loading), role=alert
-- 🌍 **i18n-подготовка** — все строки вынесены в `src/i18n/ru.ts` через `t()`
-- ⚡ **Производительность** — lazy-loading экранов (React.lazy/Suspense),
-  lazy-loading изображений
+- 📔 **Журнал событий** — 11 типов (полив, цветение, укрытие, болезнь…), фото
+- 🌸 **Сезонный превью** — выбор месяца подсвечивает цветущее; хвойные не «гаснут»
+- 📄 **PDF-отчёт** — снимок схемы + экспликация + растения, печать без зависимостей
+- 🔔 **«Что сделать сейчас»** — сезонные дела месяца по составу вашего справочника
+- 📍 **История мест** — что росло на этом месте раньше
+- 📸 **Фотогалерея** — загрузка с камеры или галереи, lazy-loading
+- 📴 **Оффлайн** — SWR-кэш API, offline.html-фолбэк, очередь отложенных мутаций
+- 📱 **PWA** — установка на домашний экран, app shortcuts, haptic feedback
+- ♿ **A11y** — skip-to-content, focus trap, prefers-reduced-motion, live regions
+- 🌍 **i18n-подготовка** — строки в `src/i18n/ru.ts` через `t()`
 
 ## Запуск локально
 
@@ -42,12 +43,12 @@
 # 1. Установить зависимости
 npm install
 
-# 2. Инициализировать Convex (потребуется войти в аккаунт Convex)
-npx convex dev
+# 2. Поднять локальный PocketBase (бинарник: pocketbase.io/docs)
+#    из корня репозитория, чтобы подхватились pb_migrations/ и pb_hooks/
+./pocketbase serve --http=127.0.0.1:8090
 
-# 3. Настроить переменные окружения
-cp .env.example .env.local
-# Заполнить VITE_CONVEX_URL из вывода npx convex dev
+# 3. Указать фронтенду адрес бэкенда
+echo 'VITE_POCKETBASE_URL=http://127.0.0.1:8090' > .env.local
 
 # 4. Запустить dev-сервер
 npm run dev
@@ -56,100 +57,52 @@ npm run dev
 ## Тесты
 
 ```bash
-# Запустить все тесты
-npx vitest run
-
-# С покрытием
-npx vitest run --coverage
-
-# Watch-режим
-npx vitest
-
-# E2E (Playwright)
-npm run test:e2e
+npx vitest run            # 343 unit/integration-теста (46 файлов)
+npx vitest run --coverage # с покрытием
+npm run test:e2e          # e2e (Playwright)
 ```
 
-126 unit/integration-тестов (17 файлов): компоненты, хуки, скелетоны, формы,
-оффлайн, модалы, snapshot-тесты, edge cases, integration-flow. Плюс e2e на
-Playwright (auth, навигация, участки). Подробности — в [TESTING.md](../TESTING.md).
+Подробности — в [TESTING.md](../TESTING.md).
 
-## Сборка
+## Сборка и деплой
 
 ```bash
-# Проверка типов
-npx tsc --noEmit
-
-# Production-сборка
-npm run build
-
-# Превью сборки
-npm run preview
+npx tsc --noEmit                                            # типы
+VITE_POCKETBASE_URL=https://pb.kdnfx.space npm run build    # → dist/
 ```
 
-## Деплой
-
-Подробная инструкция — в [DEPLOYMENT.md](../DEPLOYMENT.md).
-
-### Convex-бэкенд
-
-```bash
-npx convex deploy
-```
-
-### Фронтенд (Vercel)
-
-```bash
-npm run build
-npx vercel --prod
-```
-
-### Переменные окружения (Vercel)
-
-| Переменная | Описание |
-|---|---|
-| VITE_CONVEX_URL | URL Convex-деплоя (из npx convex deploy) |
-| VITE_CONVEX_AUTH_google_CLIENT_ID | Google OAuth Client ID |
-| CONVEX_DEPLOY_KEY | Deploy key Convex (для CI/CD) |
+Полная инструкция (включая обновление PocketBase на сервере и миграцию
+легаси-схемы) — в [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ## Структура проекта
 
 ```
 app/
-├── convex/                 # Convex backend
-│   ├── schema.ts           # Схема данных (9 таблиц)
-│   ├── gardens.ts          # Gardens: listMine, getById
-│   ├── plantings.ts        # Plantings: create, update, listByGarden
-│   ├── journalEvents.ts    # Journal: create, update, listByPlanting
-│   ├── plants.ts           # Plants: listMine, create
-│   ├── schemaObjects.ts    # Schema objects: create, update
-│   ├── zones.ts            # Light/moisture zones
-│   ├── photos.ts           # File storage: upload, list, remove
-│   ├── stats.ts            # Aggregated stats
-│   ├── users.ts            # User profile
-│   ├── auth.ts             # Convex Auth config
-│   └── http.ts             # HTTP endpoint для Auth
 ├── src/
-│   ├── components/         # Button, Input, Modal, Toast, Skeleton…
-│   │   └── canvas/         # Konva: EditorToolbar, zones, markers
-│   ├── screens/            # Login, Gardens, GardenDetail, Plants, PlantingDetail
-│   ├── hooks/              # useSafeMutation, usePullToRefresh
+│   ├── components/         # Button, Modal, Toast, TagFilter, SeasonalTasksCard…
+│   │   ├── canvas/         # Konva: EditorToolbar, зоны, маркеры, ExportReport
+│   │   ├── BloomingCalendar/  # слайдер месяцев цветения
+│   │   └── PlantWizard/    # мастер подбора растений
+│   ├── screens/            # Login, Gardens, GardenDetail, Plants, PlantingDetail…
+│   ├── hooks/              # useSafePbAction, usePbCollection, usePullToRefresh…
+│   ├── lib/                # pb.ts (клиент PocketBase), auth.ts, seasonalTasks…
+│   │   └── offline/        # SWR-стратегия, очередь мутаций
+│   ├── data/               # каталог растений (43 вида, JSON)
 │   ├── theme/              # canvasColors, canvasPatterns, sky
-│   ├── __tests__/          # Vitest-тесты
-│   ├── main.tsx            # Точка входа
-│   └── index.css           # Tailwind + globals
-├── public/                 # Статика, иконки PWA
-├── vite.config.ts
-├── vitest.config.ts
-├── tailwind.config.js
-└── package.json
+│   ├── types/              # plant.ts — трейты, словари типов
+│   ├── i18n/               # строки интерфейса
+│   └── __tests__/          # Vitest-тесты
+├── public/                 # PWA-иконки, offline.html, sw-update.js
+├── e2e/                    # Playwright
+└── vite.config.ts          # PWA-манифест, workbox
 ```
 
 ## Схема данных
 
-Полная схема — в [ARCHITECTURE.md](../ARCHITECTURE.md).
-
-9 таблиц Convex: users, gardens, schemaObjects, lightZones, moistureZones,
-plants, plantings, journalEvents, photos.
+Источник правды — миграции PocketBase в [`../pb_migrations/`](../pb_migrations/):
+users, gardens, schemaObjects, lightZones, moistureZones, plants, plantings,
+journalEvents, photos. ER-диаграмма и инварианты — в
+[ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Дизайн
 

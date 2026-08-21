@@ -115,16 +115,6 @@ export function GuidedTour({ force = false, onClose }: GuidedTourProps) {
   });
   const [step, setStep] = useState(0);
 
-  // Если force включили после монтирования — открыть тур заново.
-  useEffect(() => {
-    if (force) {
-      setStep(0);
-      setVisible(true);
-    }
-  }, [force]);
-
-  if (!visible) return null;
-
   const finish = () => {
     try {
       localStorage.setItem(STORAGE_KEY, 'true');
@@ -135,6 +125,28 @@ export function GuidedTour({ force = false, onClose }: GuidedTourProps) {
     onClose?.();
   };
 
+  // Если force включили после монтирования — открыть тур заново.
+  useEffect(() => {
+    if (force) {
+      setStep(0);
+      setVisible(true);
+    }
+  }, [force]);
+
+  // Esc закрывает тур (BUGS.md #2: пользователь не должен оказаться заперт).
+  useEffect(() => {
+    if (!visible) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') finish();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // finish пересоздаётся каждый рендер, но по поведению стабилен
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  if (!visible) return null;
+
   const isLast = step === STEPS.length - 1;
   const isFirst = step === 0;
   const current = STEPS[step];
@@ -142,16 +154,35 @@ export function GuidedTour({ force = false, onClose }: GuidedTourProps) {
   return (
     <>
       {current.highlight && <HighlightBox selector={current.highlight} />}
+      {/* BUGS.md #2: раньше оверлей глухо перекрывал весь экран и тур нельзя
+          было закрыть, не пройдя все шаги. Теперь тап по фону закрывает тур
+          (click-outside), карточка прижата к низу на мобильных (bottom sheet)
+          и не заслоняет контент, о котором рассказывает. */}
       <div
-        className="fixed inset-0 z-[52] flex items-center justify-center bg-ink/60 p-4"
+        className="fixed inset-0 z-[52] flex items-end justify-center bg-ink/50 p-4 pb-6 sm:items-center"
         role="dialog"
         aria-modal="true"
         aria-label="Знакомство с приложением"
+        data-testid="guided-tour-backdrop"
+        onClick={finish}
       >
-        <div className="w-full max-w-sm rounded-[10px] border-2 border-ink bg-paper p-[5px] shadow-blank">
-          <div className="rounded-[6px] border border-ink p-6 text-center">
+        <div
+          className="w-full max-w-sm rounded-[10px] border-2 border-ink bg-paper p-[5px] shadow-blank"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="relative rounded-[6px] border border-ink p-6 pt-5 text-center">
+            {/* Крестик — всегда видимый способ выйти из тура */}
+            <button
+              type="button"
+              onClick={finish}
+              aria-label="Закрыть знакомство"
+              className="absolute right-2 top-2 flex h-[36px] w-[36px] items-center justify-center rounded-lg text-[20px] leading-none text-ink-muted transition-colors hover:bg-ink/10 hover:text-ink"
+            >
+              ×
+            </button>
+
             {/* Прогресс-бар: пройденные шаги закрашены, текущий — активен */}
-            <div className="mb-5 flex gap-1" aria-hidden="true">
+            <div className="mb-5 mr-9 flex gap-1" aria-hidden="true">
               {STEPS.map((s, i) => (
                 <span
                   key={s.title}
