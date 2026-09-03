@@ -122,6 +122,12 @@ export const ENTRY_MENU: EntryType[] = [
   'note',
 ]
 
+/** Типы, которые API entries ещё принимает. Остальные — только чтение старых записей. */
+export const MVP_ENTRY_TYPES = ['prune', 'replant', 'death', 'disease'] as const
+
+/** Create/update с этими etype PocketBase отклоняет. harvest в схеме не было. */
+export const BLOCKED_ENTRY_TYPES = ['water', 'bloom', 'harvest', 'feed', 'shelter', 'note'] as const
+
 interface PlantTypeMeta {
   label: string
   emoji: string

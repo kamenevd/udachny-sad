@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/udacha-backend
-ExecStart=/opt/udacha-backend/pocketbase serve --http=0.0.0.0:8090 --dir=/opt/udacha-backend/pb_data --migrationsDir=/opt/udacha-backend/pb_migrations
+ExecStart=/opt/udacha-backend/pocketbase serve --http=0.0.0.0:8090 --dir=/opt/udacha-backend/pb_data --migrationsDir=/opt/udacha-backend/pb_migrations --hooksDir=/opt/udacha-backend/pb_hooks
 Restart=always
 RestartSec=5
 

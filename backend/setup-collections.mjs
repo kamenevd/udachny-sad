@@ -166,6 +166,8 @@ const collections = [
     type: 'base',
     fields: [
       { type: 'relation', name: 'planting', collectionId: '@plantings', maxSelect: 1, required: true, cascadeDelete: true },
+      // Список select не сужаем: старые записи с вырезанными типами остаются валидными.
+      // Create/update режет pb_hooks/entries_etype.pb.js (prune, replant, death, disease).
       { type: 'select', name: 'etype', required: true, maxSelect: 1, values: ['water', 'bloom', 'prune', 'feed', 'disease', 'shelter', 'replant', 'death', 'note'] },
       { type: 'date', name: 'happened_on', required: true },
       { type: 'text', name: 'note', max: 4000 },

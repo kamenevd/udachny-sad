@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:entries-api": "node --test ../backend/pb_hooks/entries_etype.test.cjs ../backend/entries_etype_api.test.mjs",
     "icons": "node scripts/make-icons.mjs",
     "preview": "vite preview"
   },
